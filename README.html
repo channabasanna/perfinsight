@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PerfInsight — Performance Test Results Comparison Platform</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --indigo-50:  #eef2ff; --indigo-100: #e0e7ff; --indigo-200: #c7d2fe;
+    --indigo-400: #818cf8; --indigo-500: #6366f1; --indigo-600: #4f46e5;
+    --indigo-700: #4338ca; --indigo-900: #312e81;
+    --slate-50:  #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b;
+    --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --emerald-400: #34d399; --emerald-500: #10b981; --emerald-600: #059669;
+    --red-400: #f87171;    --red-500: #ef4444;    --red-600: #dc2626;
+    --amber-400: #fbbf24;  --amber-500: #f59e0b;
+    --blue-500:  #3b82f6;
+    --sidebar-w: 260px;
+    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    font-family: var(--font);
+    background: var(--slate-50);
+    color: var(--slate-800);
+    display: flex;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    background: var(--slate-900);
+    position: fixed;
+    top: 0; left: 0;
+    overflow-y: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transition: transform .25s ease;
+  }
+
+  .sidebar-logo {
+    padding: 1.5rem 1.25rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; gap: .75rem;
+  }
+  .sidebar-logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .sidebar-logo-text { color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: -.3px; }
+  .sidebar-logo-sub  { color: var(--slate-400); font-size: .65rem; letter-spacing: .5px; text-transform: uppercase; }
+
+  .nav-section { padding: .75rem .75rem .25rem; }
+  .nav-section-label {
+    color: var(--indigo-400);
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0 .5rem .4rem;
+  }
+  .nav-link {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem .75rem;
+    color: var(--slate-400);
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: .8rem;
+    font-weight: 500;
+    transition: background .15s, color .15s;
+  }
+  .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .nav-link.active { background: var(--indigo-600); color: #fff; }
+  .nav-icon { font-size: .9rem; flex-shrink: 0; width: 1.1rem; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid rgba(255,255,255,.06);
+    color: var(--slate-500);
+    font-size: .7rem;
+    text-align: center;
+  }
+
+  /* ── Main content ── */
+  #main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, var(--slate-900) 0%, #1e1b4b 50%, var(--indigo-900) 100%);
+    padding: 4rem 3rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139,92,246,.12) 0%, transparent 50%);
+  }
+  .hero-inner { position: relative; max-width: 860px; }
+
+  .hero-banner {
+    font-family: var(--mono);
+    font-size: clamp(.42rem, 1vw, .65rem);
+    color: var(--indigo-400);
+    line-height: 1.3;
+    margin-bottom: 1.75rem;
+    opacity: .9;
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  .hero-title {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.5px;
+    line-height: 1.2;
+    margin-bottom: .5rem;
+  }
+  .hero-sub { color: var(--indigo-300); font-size: 1rem; margin-bottom: 2rem; font-style: italic; }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .3rem .75rem;
+    border-radius: 999px;
+    font-size: .72rem; font-weight: 600;
+    letter-spacing: .3px;
+  }
+  .badge-node    { background: #166534; color: #86efac; }
+  .badge-ts      { background: #1e3a5f; color: #93c5fd; }
+  .badge-react   { background: #0c4a6e; color: #7dd3fc; }
+  .badge-sqlite  { background: #1e1b4b; color: #a5b4fc; }
+  .badge-tailwind{ background: #0c4a6e; color: #5eead4; }
+  .badge-vite    { background: #2e1065; color: #d8b4fe; }
+
+  /* ── Content layout ── */
+  .content { padding: 2.5rem 3rem; max-width: 960px; }
+
+  section { margin-bottom: 3.5rem; }
+
+  .section-anchor { display: block; position: relative; top: -80px; }
+
+  h2 {
+    font-size: 1.5rem; font-weight: 700;
+    color: var(--slate-900);
+    padding-bottom: .6rem;
+    border-bottom: 2px solid var(--indigo-100);
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  h2 .emoji { font-size: 1.3rem; }
+
+  h3 {
+    font-size: 1.05rem; font-weight: 600;
+    color: var(--slate-700);
+    margin: 1.5rem 0 .65rem;
+  }
+
+  h4 {
+    font-size: .9rem; font-weight: 600;
+    color: var(--slate-600);
+    margin: 1.2rem 0 .5rem;
+  }
+
+  p { margin-bottom: .85rem; color: var(--slate-700); }
+
+  blockquote {
+    border-left: 3px solid var(--indigo-400);
+    background: var(--indigo-50);
+    padding: .75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    color: var(--indigo-700);
+    font-size: .875rem;
+    margin: 1rem 0;
+  }
+
+  ul, ol { padding-left: 1.5rem; margin-bottom: .85rem; }
+  li { color: var(--slate-700); margin-bottom: .3rem; }
+
+  a { color: var(--indigo-600); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  strong { color: var(--slate-900); }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin: 1rem 0; border-radius: 10px; border: 1px solid var(--slate-200); }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  thead th {
+    background: var(--slate-800); color: #fff;
+    padding: .65rem 1rem;
+    text-align: left; font-weight: 600; font-size: .8rem;
+    letter-spacing: .3px;
+  }
+  thead th:first-child { border-radius: 9px 0 0 0; }
+  thead th:last-child  { border-radius: 0 9px 0 0; }
+  tbody tr:nth-child(even) { background: var(--slate-50); }
+  tbody tr:hover { background: var(--indigo-50); }
+  td { padding: .6rem 1rem; border-bottom: 1px solid var(--slate-100); vertical-align: top; }
+  td code { background: var(--slate-100); padding: .1rem .35rem; border-radius: 4px; font-size: .8rem; font-family: var(--mono); }
+
+  /* ── Code blocks ── */
+  pre {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    position: relative;
+  }
+  pre code {
+    font-family: var(--mono);
+    font-size: .8rem;
+    line-height: 1.65;
+    color: #e6edf3;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+  }
+  .pre-label {
+    position: absolute; top: .5rem; right: .75rem;
+    font-size: .65rem; font-weight: 600;
+    color: #6e7681;
+    text-transform: uppercase; letter-spacing: .5px;
+    font-family: var(--font);
+  }
+
+  /* syntax colours */
+  .kw  { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .cmt { color: #8b949e; font-style: italic; }
+  .num { color: #79c0ff; }
+  .fn  { color: #d2a8ff; }
+  .var { color: #ffa657; }
+  .tag { color: #7ee787; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .85em;
+    background: var(--slate-100);
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    color: var(--indigo-700);
+  }
+
+  /* ── Feature cards ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .feature-card {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .feature-card:hover { box-shadow: 0 8px 24px rgba(99,102,241,.12); transform: translateY(-2px); }
+  .feature-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+  .feature-title { font-weight: 600; color: var(--slate-900); font-size: .9rem; margin-bottom: .35rem; }
+  .feature-desc  { color: var(--slate-500); font-size: .8rem; line-height: 1.5; }
+
+  /* ── Architecture box ── */
+  .arch-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 1.5rem;
+    font-family: var(--mono);
+    font-size: .75rem;
+    line-height: 1.55;
+    color: #e6edf3;
+    overflow-x: auto;
+  }
+  .arch-layer { color: #79c0ff; font-weight: 700; }
+  .arch-box .component { color: #7ee787; }
+  .arch-box .arrow { color: var(--indigo-400); }
+  .arch-box .db { color: #ffa657; }
+
+  /* ── Role cards ── */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 640px) { .role-grid { grid-template-columns: 1fr; } }
+  .role-card {
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid;
+  }
+  .role-admin {
+    background: linear-gradient(135deg, var(--indigo-50), #fff);
+    border-color: var(--indigo-200);
+  }
+  .role-user {
+    background: linear-gradient(135deg, var(--slate-50), #fff);
+    border-color: var(--slate-200);
+  }
+  .role-title { font-weight: 700; font-size: 1rem; margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+  .role-admin .role-title { color: var(--indigo-700); }
+  .role-user  .role-title { color: var(--slate-700); }
+  .role-badge {
+    font-size: .65rem; font-weight: 700; letter-spacing: .5px;
+    padding: .2rem .5rem; border-radius: 999px; text-transform: uppercase;
+  }
+  .role-admin .role-badge { background: var(--indigo-100); color: var(--indigo-700); }
+  .role-user  .role-badge { background: var(--slate-100);  color: var(--slate-600); }
+  .perm { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .3rem; font-size: .8rem; }
+  .perm-yes { color: var(--emerald-600); }
+  .perm-no  { color: var(--red-500);     }
+
+  /* ── Score ring ── */
+  .score-demo {
+    display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0;
+  }
+  .score-card {
+    text-align: center; padding: 1.1rem 1.5rem;
+    background: #fff; border: 1px solid var(--slate-200); border-radius: 12px;
+    min-width: 100px;
+  }
+  .score-num { font-size: 2rem; font-weight: 800; }
+  .score-good    { color: var(--emerald-500); }
+  .score-moderate{ color: var(--amber-500); }
+  .score-poor    { color: var(--red-500); }
+  .score-label { font-size: .7rem; color: var(--slate-400); margin-top: .2rem; }
+
+  /* ── Deployment tabs ── */
+  .deploy-tabs { margin: 1rem 0; }
+  .tab-buttons {
+    display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 0;
+    border-bottom: 2px solid var(--slate-200);
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    padding: .5rem .9rem;
+    border: none; background: none; cursor: pointer;
+    font-size: .78rem; font-weight: 600; color: var(--slate-500);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    border-radius: 6px 6px 0 0;
+    transition: color .15s;
+    font-family: var(--font);
+  }
+  .tab-btn:hover { color: var(--indigo-600); }
+  .tab-btn.active { color: var(--indigo-600); border-bottom-color: var(--indigo-600); background: var(--indigo-50); }
+  .tab-icon { margin-right: .3rem; }
+
+  .tab-panel { display: none; padding: 1.5rem 0; }
+  .tab-panel.active { display: block; }
+
+  /* ── Steps ── */
+  .steps { list-style: none; padding: 0; }
+  .step {
+    display: flex; gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .step-num {
+    width: 28px; height: 28px; min-width: 28px;
+    background: var(--indigo-600); color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem; margin-top: .1rem;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 600; color: var(--slate-900); margin-bottom: .4rem; font-size: .9rem; }
+
+  /* ── Security checklist ── */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: .65rem;
+    padding: .6rem .75rem;
+    border-radius: 8px;
+    margin-bottom: .35rem;
+    background: #fff; border: 1px solid var(--slate-100);
+    font-size: .85rem;
+  }
+  .checklist li:hover { background: var(--slate-50); }
+  .check-icon { color: var(--emerald-500); font-size: 1rem; flex-shrink: 0; margin-top: .05rem; }
+  .check-label { font-weight: 600; color: var(--slate-800); }
+  .check-how   { color: var(--slate-500); margin-left: .25rem; }
+
+  /* ── Troubleshoot ── */
+  .trouble-item {
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 10px; margin-bottom: .85rem; overflow: hidden;
+  }
+  .trouble-q {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .9rem 1.1rem; cursor: pointer;
+    font-weight: 600; font-size: .87rem; color: var(--slate-800);
+    user-select: none;
+    transition: background .15s;
+  }
+  .trouble-q:hover { background: var(--slate-50); }
+  .trouble-q .arrow { color: var(--slate-400); transition: transform .2s; font-size: .75rem; }
+  .trouble-item.open .trouble-q .arrow { transform: rotate(90deg); }
+  .trouble-ans {
+    display: none;
+    padding: 0 1.1rem 1rem;
+    font-size: .84rem; color: var(--slate-600);
+  }
+  .trouble-item.open .trouble-ans { display: block; }
+
+  /* ── DB Schema ── */
+  .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .schema-table {
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 10px; overflow: hidden;
+  }
+  .schema-header {
+    background: var(--slate-800); color: #fff;
+    padding: .55rem 1rem; font-weight: 700; font-size: .82rem;
+    font-family: var(--mono);
+  }
+  .schema-field {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .4rem 1rem; border-bottom: 1px solid var(--slate-50);
+    font-size: .78rem;
+  }
+  .schema-field:last-child { border-bottom: none; }
+  .field-name { font-family: var(--mono); color: var(--slate-700); font-weight: 500; }
+  .field-type { color: var(--slate-400); font-size: .72rem; }
+  .field-pk  { color: var(--amber-500); font-weight: 700; }
+  .field-fk  { color: var(--indigo-500); }
+  .field-req { color: var(--red-400); font-size: .65rem; margin-left: .3rem; }
+
+  /* ── Util ── */
+  .divider { height: 1px; background: var(--slate-200); margin: 2rem 0; }
+  .info-box {
+    background: var(--indigo-50); border: 1px solid var(--indigo-200);
+    border-radius: 8px; padding: .75rem 1rem;
+    font-size: .84rem; color: var(--indigo-700); margin: .75rem 0;
+    display: flex; gap: .6rem;
+  }
+  .warn-box {
+    background: #fef3c7; border: 1px solid #fcd34d;
+    border-radius: 8px; padding: .75rem 1rem;
+    font-size: .84rem; color: #92400e; margin: .75rem 0;
+    display: flex; gap: .6rem;
+  }
+
+  /* ── Screenshots ── */
+  .screenshot {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--slate-200);
+    box-shadow: 0 4px 20px rgba(0,0,0,.10);
+    display: block;
+    margin: .75rem 0 1.75rem;
+  }
+  .screenshot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: .75rem 0 1.75rem;
+  }
+  .screenshot-grid .screenshot { margin: 0; }
+  @media (max-width: 700px) { .screenshot-grid { grid-template-columns: 1fr; } }
+  .screenshot-label {
+    font-size: .72rem; font-weight: 600; color: var(--slate-400);
+    text-transform: uppercase; letter-spacing: .5px;
+    margin-bottom: .3rem;
+  }
+
+  /* ── Footer ── */
+  .page-footer {
+    background: var(--slate-900); color: var(--slate-400);
+    text-align: center; padding: 2.5rem 1rem;
+    font-size: .8rem;
+  }
+  .page-footer strong { color: var(--indigo-400); }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    :root { --sidebar-w: 0px; }
+    #sidebar { transform: translateX(-260px); width: 260px; }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .content { padding: 1.5rem 1.25rem; }
+    .hero { padding: 2.5rem 1.5rem; }
+    .hero-banner { display: none; }
+    #menu-btn { display: flex; }
+  }
+  #menu-btn {
+    display: none;
+    position: fixed; top: 1rem; left: 1rem; z-index: 200;
+    background: var(--indigo-600); color: #fff;
+    border: none; border-radius: 8px;
+    width: 38px; height: 38px;
+    align-items: center; justify-content: center;
+    font-size: 1.2rem; cursor: pointer;
+  }
+  #overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.4); z-index: 90;
+  }
+  #overlay.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Mobile menu button -->
+<button id="menu-btn" onclick="toggleMenu()" title="Menu">☰</button>
+<div id="overlay" onclick="toggleMenu()"></div>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">📊</div>
+    <div>
+      <div class="sidebar-logo-text">PerfInsight</div>
+      <div class="sidebar-logo-sub">Documentation v1.0</div>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Introduction</div>
+    <a class="nav-link" href="#overview"><span class="nav-icon">🚀</span>Overview</a>
+    <a class="nav-link" href="#features"><span class="nav-icon">✨</span>Key Features</a>
+    <a class="nav-link" href="#how-to-use"><span class="nav-icon">📸</span>Screenshots</a>
+    <a class="nav-link" href="#architecture"><span class="nav-icon">🏗</span>Architecture</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Technical</div>
+    <a class="nav-link" href="#stack"><span class="nav-icon">🛠</span>Tech Stack</a>
+    <a class="nav-link" href="#structure"><span class="nav-icon">📂</span>Project Structure</a>
+    <a class="nav-link" href="#schema"><span class="nav-icon">🗄</span>Database Schema</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Setup</div>
+    <a class="nav-link" href="#getting-started"><span class="nav-icon">🏁</span>Getting Started</a>
+    <a class="nav-link" href="#env-vars"><span class="nav-icon">🔧</span>Environment Vars</a>
+    <a class="nav-link" href="#rbac"><span class="nav-icon">👥</span>Access Control</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">User Guide</div>
+    <a class="nav-link" href="#how-to-use"><span class="nav-icon">📖</span>How to Use</a>
+    <a class="nav-link" href="#how-login"><span class="nav-icon">🔑</span>Login</a>
+    <a class="nav-link" href="#how-upload"><span class="nav-icon">📤</span>Upload Results</a>
+    <a class="nav-link" href="#how-compare"><span class="nav-icon">🔍</span>Compare Runs</a>
+    <a class="nav-link" href="#how-trends"><span class="nav-icon">📈</span>Trend Analysis</a>
+    <a class="nav-link" href="#how-filters"><span class="nav-icon">🔧</span>Transaction Filters</a>
+    <a class="nav-link" href="#how-pdf"><span class="nav-icon">📄</span>PDF Export</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Reference</div>
+    <a class="nav-link" href="#formats"><span class="nav-icon">📄</span>File Formats</a>
+    <a class="nav-link" href="#engine"><span class="nav-icon">⚙️</span>Comparison Engine</a>
+    <a class="nav-link" href="#api"><span class="nav-icon">📡</span>API Reference</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Deployment</div>
+    <a class="nav-link" href="#deployment"><span class="nav-icon">🚢</span>All Platforms</a>
+    <a class="nav-link" href="#security"><span class="nav-icon">🔒</span>Security</a>
+    <a class="nav-link" href="#troubleshoot"><span class="nav-icon">🐛</span>Troubleshooting</a>
+  </div>
+
+  <div class="sidebar-footer">PerfInsight v1.0.0 · Performance COE</div>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<div id="main">
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-inner">
+      <pre class="hero-banner">██████╗ ███████╗██████╗ ███████╗██╗███╗   ██╗███████╗██╗ ██████╗ ██╗  ██╗████████╗
+██╔══██╗██╔════╝██╔══██╗██╔════╝██║████╗  ██║██╔════╝██║██╔════╝ ██║  ██║╚══██╔══╝
+██████╔╝█████╗  ██████╔╝█████╗  ██║██╔██╗ ██║███████╗██║██║  ███╗███████║   ██║
+██╔═══╝ ██╔══╝  ██╔══██╗██╔══╝  ██║██║╚██╗██║╚════██║██║██║   ██║██╔══██║   ██║
+██║     ███████╗██║  ██║██║     ██║██║ ╚████║███████║██║╚██████╔╝██║  ██║   ██║
+╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝</pre>
+      <h1 class="hero-title">Performance Test Results Comparison Platform</h1>
+      <p class="hero-sub">Analyze. Compare. Optimize.</p>
+      <div class="badge-row">
+        <span class="badge badge-node">⬡ Node.js 20+</span>
+        <span class="badge badge-ts">TS TypeScript 5.3</span>
+        <span class="badge badge-react">⚛ React 18</span>
+        <span class="badge badge-sqlite">🗄 SQLite 3</span>
+        <span class="badge badge-tailwind">◈ Tailwind 3.4</span>
+        <span class="badge badge-vite">⚡ Vite 5</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ══ OVERVIEW ══ -->
+    <section id="overview">
+      <span class="section-anchor" id="overview-anchor"></span>
+      <h2><span class="emoji">🚀</span> Overview</h2>
+      <p>
+        <strong>PerfInsight</strong> is a full-stack web application built for Performance Testing Centers of Excellence (COE)
+        to <strong>upload, organize, compare, and trend-analyze performance test results</strong> from any testing tool —
+        JMeter, Gatling, K6, Locust, or custom CSVs.
+      </p>
+      <p>
+        Instead of manually comparing spreadsheets after every load test run, PerfInsight gives your team a centralized,
+        visual platform to make fast, data-driven decisions.
+      </p>
+      <div class="feature-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); margin-top:1rem;">
+        <div style="background:#fff;border:1px solid var(--slate-200);border-radius:10px;padding:1rem;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:.4rem;">🔍</div>
+          <div style="font-weight:700;font-size:.85rem;color:var(--slate-900);">Instant Regressions</div>
+          <div style="font-size:.76rem;color:var(--slate-500);">See transaction-level degradations the moment you upload</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--slate-200);border-radius:10px;padding:1rem;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:.4rem;">📈</div>
+          <div style="font-weight:700;font-size:.85rem;color:var(--slate-900);">Trend Tracking</div>
+          <div style="font-size:.76rem;color:var(--slate-500);">Multi-metric trends across all test runs over time</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--slate-200);border-radius:10px;padding:1rem;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:.4rem;">🏆</div>
+          <div style="font-weight:700;font-size:.85rem;color:var(--slate-900);">Quality Scoring</div>
+          <div style="font-size:.76rem;color:var(--slate-500);">Automated 0–100 performance score per comparison</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--slate-200);border-radius:10px;padding:1rem;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:.4rem;">👥</div>
+          <div style="font-weight:700;font-size:.85rem;color:var(--slate-900);">Team Collaboration</div>
+          <div style="font-size:.76rem;color:var(--slate-500);">Role-based access with per-project allocation</div>
+        </div>
+      </div>
+      <blockquote>Built for teams that run performance tests regularly and need consistent, automated analysis — not one-off comparisons.</blockquote>
+    </section>
+
+    <!-- ══ FEATURES ══ -->
+    <section id="features">
+      <h2><span class="emoji">✨</span> Key Features</h2>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="feature-icon">📁</div><div class="feature-title">Hierarchical Organization</div><div class="feature-desc">Projects → Sub-Projects → Test Runs mirrors real-world customer/application structure.</div></div>
+        <div class="feature-card"><div class="feature-icon">📤</div><div class="feature-title">Multi-Tool Upload</div><div class="feature-desc">Parse JMeter JTL/CSV, Gatling, K6, Locust, and any generic CSV/Excel export automatically.</div></div>
+        <div class="feature-card"><div class="feature-icon">🔍</div><div class="feature-title">Transaction-Level Comparison</div><div class="feature-desc">Side-by-side P90, Avg, Throughput, Error Rate diff between any two test runs in the same sub-project.</div></div>
+        <div class="feature-card"><div class="feature-icon">📊</div><div class="feature-title">Executive Summary</div><div class="feature-desc">Summary at a Glance (8 stat cards) + narrative + Test-Level Metrics table on every comparison result.</div></div>
+        <div class="feature-card"><div class="feature-icon">📄</div><div class="feature-title">PDF Export</div><div class="feature-desc">One-click A4 landscape PDF report — summary, metrics, insights, and full transaction table. Generated in-browser via jsPDF.</div></div>
+        <div class="feature-card"><div class="feature-icon">💡</div><div class="feature-title">AI-Style Insights</div><div class="feature-desc">Categorized insights (Critical / Warning / Info / Success) with root-cause hints for every regression.</div></div>
+        <div class="feature-card"><div class="feature-icon">📈</div><div class="feature-title">Trend Analysis</div><div class="feature-desc">Multi-metric line charts across all test runs: response time, throughput, error rate, user load.</div></div>
+        <div class="feature-card"><div class="feature-icon">🔧</div><div class="feature-title">Transaction Filters</div><div class="feature-desc">Configure which transactions matter per sub-project via manual selection or Excel/CSV import. Available to all authenticated users.</div></div>
+        <div class="feature-card"><div class="feature-icon">✏️</div><div class="feature-title">Inline Editing</div><div class="feature-desc">Rename test runs directly from the table — Enter to save, Escape to cancel, no modal needed.</div></div>
+        <div class="feature-card"><div class="feature-icon">👥</div><div class="feature-title">Role-Based Access</div><div class="feature-desc">Admin vs User roles. Assign specific projects to each user — they see nothing else.</div></div>
+        <div class="feature-card"><div class="feature-icon">🔐</div><div class="feature-title">JWT Authentication</div><div class="feature-desc">Secure, token-based login with 8-hour session expiry. Passwords hashed with Node crypto scrypt.</div></div>
+        <div class="feature-card"><div class="feature-icon">🌓</div><div class="feature-title">Collapsible Dashboard</div><div class="feature-desc">Project → Sub-Project hierarchy with quick compare capability directly from the dashboard.</div></div>
+        <div class="feature-card"><div class="feature-icon">🚫</div><div class="feature-title">Cross-Run Protection</div><div class="feature-desc">Comparison enforced within same sub-project — both frontend UI and backend validation.</div></div>
+      </div>
+    </section>
+
+    <!-- ══ ARCHITECTURE ══ -->
+    <section id="architecture">
+      <h2><span class="emoji">🏗</span> Architecture</h2>
+      <p style="color:var(--slate-500);font-size:.9rem;margin-bottom:1.25rem;">Four-layer architecture: Presentation → Application → Business Logic → Data. Click to zoom.</p>
+
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:14px;padding:1.25rem;overflow-x:auto;">
+        <svg viewBox="0 0 860 730" xmlns="http://www.w3.org/2000/svg"
+             style="width:100%;min-width:580px;display:block;"
+             role="img" aria-label="PerfInsight System Architecture Diagram">
+          <defs>
+            <!-- Arrow markers -->
+            <marker id="arw"       markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#818cf8"/></marker>
+            <marker id="arw-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#34d399"/></marker>
+            <marker id="arw-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#fbbf24"/></marker>
+            <marker id="arw-blue"  markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#60a5fa"/></marker>
+            <!-- Drop shadow -->
+            <filter id="sh" x="-4%" y="-4%" width="108%" height="108%">
+              <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity=".5"/>
+            </filter>
+            <!-- Gradients — layer fills -->
+            <linearGradient id="g-browser" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1e3a5f"/><stop offset="100%" stop-color="#172554"/>
+            </linearGradient>
+            <linearGradient id="g-api" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2e1065"/><stop offset="100%" stop-color="#1e1b4b"/>
+            </linearGradient>
+            <linearGradient id="g-logic" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#014134"/>
+            </linearGradient>
+            <linearGradient id="g-db" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#451a03"/><stop offset="100%" stop-color="#78350f"/>
+            </linearGradient>
+            <!-- Gradients — component fills -->
+            <linearGradient id="g-page"  x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#1d4ed8"/>
+            </linearGradient>
+            <linearGradient id="g-admin" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#4338ca"/>
+            </linearGradient>
+            <linearGradient id="g-mid"   x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#312e81"/>
+            </linearGradient>
+            <linearGradient id="g-route" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#1a1830"/>
+            </linearGradient>
+            <linearGradient id="g-svc"   x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#052e16"/><stop offset="100%" stop-color="#064e3b"/>
+            </linearGradient>
+            <linearGradient id="g-tbl"   x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#431407"/><stop offset="100%" stop-color="#7c2d12"/>
+            </linearGradient>
+          </defs>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  LAYER 1 — PRESENTATION (BROWSER)                   -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <rect x="10" y="10" width="840" height="205" rx="12" fill="url(#g-browser)" stroke="#3b82f6" stroke-width="1.5" filter="url(#sh)"/>
+          <!-- badge -->
+          <rect x="20" y="19" width="220" height="19" rx="4" fill="#1d4ed8" fill-opacity=".4"/>
+          <text x="28" y="32" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="700" fill="#93c5fd" letter-spacing="1.2">PRESENTATION LAYER — BROWSER</text>
+          <text x="254" y="32" font-family="Inter,'Segoe UI',sans-serif" font-size="10" fill="#60a5fa">React 18 · Vite 5 · TypeScript 5.3 · Tailwind CSS 3.4 · React Router v6</text>
+
+          <!-- ── Page boxes (row 1) ── -->
+          <!-- Dashboard -->
+          <rect x="28" y="46" width="122" height="52" rx="8" fill="url(#g-page)" stroke="#3b82f6" stroke-width="1"/>
+          <text x="89" y="67" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Dashboard</text>
+          <text x="89" y="84" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#93c5fd">Stats · Quick Compare</text>
+          <!-- Upload -->
+          <rect x="163" y="46" width="122" height="52" rx="8" fill="url(#g-page)" stroke="#3b82f6" stroke-width="1"/>
+          <text x="224" y="67" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Upload</text>
+          <text x="224" y="84" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#93c5fd">CSV · XLSX · Dropzone</text>
+          <!-- Compare -->
+          <rect x="298" y="46" width="122" height="52" rx="8" fill="url(#g-page)" stroke="#3b82f6" stroke-width="1"/>
+          <text x="359" y="67" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Compare</text>
+          <text x="359" y="84" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#93c5fd">P90 · Avg · Error diff</text>
+          <!-- Trends -->
+          <rect x="433" y="46" width="122" height="52" rx="8" fill="url(#g-page)" stroke="#3b82f6" stroke-width="1"/>
+          <text x="494" y="67" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Trends</text>
+          <text x="494" y="84" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#93c5fd">Recharts Line Graphs</text>
+          <!-- Projects -->
+          <rect x="568" y="46" width="122" height="52" rx="8" fill="url(#g-page)" stroke="#3b82f6" stroke-width="1"/>
+          <text x="629" y="67" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Projects</text>
+          <text x="629" y="84" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#93c5fd">Sub-Project CRUD</text>
+          <!-- Admin (highlighted) -->
+          <rect x="703" y="46" width="130" height="52" rx="8" fill="url(#g-admin)" stroke="#818cf8" stroke-width="1.5"/>
+          <text x="768" y="65" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#c7d2fe">Admin</text>
+          <text x="768" y="80" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#a5b4fc">User + Access Mgmt</text>
+          <text x="768" y="94" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8" fill="#818cf8">🔒 admin only</text>
+
+          <!-- ── State / infrastructure row ── -->
+          <!-- AuthContext -->
+          <rect x="28" y="116" width="190" height="48" rx="8" fill="#1e3a8a" fill-opacity=".55" stroke="#60a5fa" stroke-width="1" stroke-dasharray="5,3"/>
+          <text x="123" y="137" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">AuthContext</text>
+          <text x="123" y="153" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#7dd3fc">role · token · username · isAdmin</text>
+          <!-- arrow -->
+          <line x1="219" y1="140" x2="240" y2="140" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arw)"/>
+          <!-- Axios Client -->
+          <rect x="243" y="116" width="190" height="48" rx="8" fill="#1e3a8a" fill-opacity=".55" stroke="#60a5fa" stroke-width="1" stroke-dasharray="5,3"/>
+          <text x="338" y="137" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">Axios HTTP Client</text>
+          <text x="338" y="153" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#7dd3fc">Interceptors · Bearer token inject</text>
+          <!-- localStorage -->
+          <rect x="447" y="116" width="185" height="48" rx="8" fill="#1e3a8a" fill-opacity=".55" stroke="#60a5fa" stroke-width="1" stroke-dasharray="5,3"/>
+          <text x="539" y="137" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">localStorage</text>
+          <text x="539" y="153" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#7dd3fc">auth_token · auth_role · username</text>
+          <!-- React Router -->
+          <rect x="646" y="116" width="187" height="48" rx="8" fill="#1e3a8a" fill-opacity=".55" stroke="#60a5fa" stroke-width="1" stroke-dasharray="5,3"/>
+          <text x="739" y="137" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#bfdbfe">React Router v6</text>
+          <text x="739" y="153" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#7dd3fc">PrivateRoute · AdminRoute guards</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  CONNECTOR A — HTTP / REST                          -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <line x1="430" y1="218" x2="430" y2="252" stroke="#818cf8" stroke-width="2.5" marker-end="url(#arw)"/>
+          <rect x="348" y="222" width="164" height="22" rx="11" fill="#1e1b4b" stroke="#4f46e5" stroke-width="1"/>
+          <text x="430" y="237" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="600" fill="#818cf8">HTTP / REST  ·  port 3001</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  LAYER 2 — APPLICATION (EXPRESS API)                -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <rect x="10" y="255" width="840" height="175" rx="12" fill="url(#g-api)" stroke="#6366f1" stroke-width="1.5" filter="url(#sh)"/>
+          <!-- badge -->
+          <rect x="20" y="264" width="195" height="19" rx="4" fill="#4338ca" fill-opacity=".35"/>
+          <text x="28" y="277" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="700" fill="#a5b4fc" letter-spacing="1.2">APPLICATION LAYER — EXPRESS (Node.js 20+)</text>
+          <text x="229" y="277" font-family="Inter,'Segoe UI',sans-serif" font-size="10" fill="#818cf8">TypeScript · JWT Auth Middleware · RBAC · Multer · CORS</text>
+
+          <!-- Middleware boxes -->
+          <!-- JWT Auth -->
+          <rect x="28" y="288" width="188" height="50" rx="8" fill="url(#g-mid)" stroke="#4f46e5" stroke-width="1"/>
+          <text x="122" y="308" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="600" fill="#c7d2fe">JWT Auth Middleware</text>
+          <text x="122" y="323" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#818cf8">Verify Bearer token</text>
+          <text x="122" y="335" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="7.5" fill="#6366f1">req.user → { id, username, role }</text>
+          <!-- requireAdmin -->
+          <rect x="228" y="288" width="188" height="50" rx="8" fill="url(#g-mid)" stroke="#4f46e5" stroke-width="1"/>
+          <text x="322" y="308" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="600" fill="#c7d2fe">requireAdmin</text>
+          <text x="322" y="323" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#818cf8">role === 'admin' guard</text>
+          <text x="322" y="335" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="7.5" fill="#6366f1">403 if not admin</text>
+          <!-- Multer -->
+          <rect x="428" y="288" width="188" height="50" rx="8" fill="url(#g-mid)" stroke="#4f46e5" stroke-width="1"/>
+          <text x="522" y="308" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="600" fill="#c7d2fe">Multer Upload</text>
+          <text x="522" y="323" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#818cf8">multipart/form-data</text>
+          <text x="522" y="335" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="7.5" fill="#6366f1">diskStorage · 50 MB limit</text>
+          <!-- Error / CORS -->
+          <rect x="628" y="288" width="204" height="50" rx="8" fill="url(#g-mid)" stroke="#4f46e5" stroke-width="1"/>
+          <text x="730" y="308" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="600" fill="#c7d2fe">CORS · dotenv · Errors</text>
+          <text x="730" y="323" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#818cf8">Cross-origin · Env config</text>
+          <text x="730" y="335" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="7.5" fill="#6366f1">Global 500 error middleware</text>
+
+          <!-- API Routes wide box -->
+          <rect x="28" y="352" width="804" height="52" rx="8" fill="url(#g-route)" stroke="#4338ca" stroke-width="1"/>
+          <text x="430" y="371" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10" font-weight="700" fill="#a5b4fc" letter-spacing=".5">REST API ROUTES</text>
+          <text x="430" y="390" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" fill="#818cf8">/api/auth   ·   /api/projects   ·   /api/projects/:id/subprojects   ·   /api/testruns   ·   /api/comparison   ·   /api/trends   ·   /api/dashboard/stats</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  CONNECTOR B — Business Logic Calls                 -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <line x1="430" y1="433" x2="430" y2="460" stroke="#34d399" stroke-width="2.5" marker-end="url(#arw-green)"/>
+          <rect x="334" y="437" width="192" height="22" rx="11" fill="#022c22" stroke="#059669" stroke-width="1"/>
+          <text x="430" y="452" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="600" fill="#34d399">Internal service calls</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  LAYER 3 — BUSINESS LOGIC SERVICES                  -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <rect x="10" y="463" width="840" height="128" rx="12" fill="url(#g-logic)" stroke="#059669" stroke-width="1.5" filter="url(#sh)"/>
+          <!-- badge -->
+          <rect x="20" y="472" width="160" height="19" rx="4" fill="#059669" fill-opacity=".3"/>
+          <text x="28" y="485" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="700" fill="#6ee7b7" letter-spacing="1.2">BUSINESS LOGIC LAYER</text>
+          <text x="194" y="485" font-family="Inter,'Segoe UI',sans-serif" font-size="10" fill="#34d399">Core processing — Analysis · Scoring · File parsing · Authentication</text>
+
+          <!-- Comparison Engine -->
+          <rect x="28" y="497" width="262" height="78" rx="9" fill="url(#g-svc)" stroke="#10b981" stroke-width="1.2"/>
+          <text x="159" y="517" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#6ee7b7">Comparison Engine</text>
+          <text x="159" y="532" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">P90 · Avg RT · Throughput · Error Rate</text>
+          <text x="159" y="547" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">Regression detection · 0–100 score</text>
+          <text x="159" y="562" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">Critical / Warning / Info insights</text>
+
+          <!-- File Parser -->
+          <rect x="302" y="497" width="262" height="78" rx="9" fill="url(#g-svc)" stroke="#10b981" stroke-width="1.2"/>
+          <text x="433" y="517" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#6ee7b7">File Parser</text>
+          <text x="433" y="532" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">JMeter JTL/CSV · Gatling · K6 · Locust</text>
+          <text x="433" y="547" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">Generic CSV · Excel (.xlsx) auto-detect</text>
+          <text x="433" y="562" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">XLSX lib · Column mapping engine</text>
+
+          <!-- Auth &amp; Access Service -->
+          <rect x="576" y="497" width="256" height="78" rx="9" fill="url(#g-svc)" stroke="#10b981" stroke-width="1.2"/>
+          <text x="704" y="517" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#6ee7b7">Auth &amp; Access Service</text>
+          <text x="704" y="532" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">scryptSync · timingSafeEqual</text>
+          <text x="704" y="547" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">JWT sign / verify · 8 h expiry</text>
+          <text x="704" y="562" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" fill="#34d399">Project access filter (RBAC)</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  CONNECTOR C — SQLite                               -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <line x1="430" y1="594" x2="430" y2="618" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arw-amber)"/>
+          <rect x="320" y="597" width="220" height="22" rx="11" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+          <text x="430" y="612" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="600" fill="#fbbf24">better-sqlite3 (synchronous)</text>
+
+          <!-- ════════════════════════════════════════════════════ -->
+          <!--  LAYER 4 — DATA (SQLite)                            -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <rect x="10" y="620" width="840" height="100" rx="12" fill="url(#g-db)" stroke="#f59e0b" stroke-width="1.5" filter="url(#sh)"/>
+          <!-- badge -->
+          <rect x="20" y="629" width="115" height="19" rx="4" fill="#d97706" fill-opacity=".35"/>
+          <text x="28" y="642" font-family="Inter,'Segoe UI',sans-serif" font-size="9.5" font-weight="700" fill="#fde68a" letter-spacing="1.2">DATA LAYER</text>
+          <text x="148" y="642" font-family="Inter,'Segoe UI',sans-serif" font-size="10" fill="#fbbf24">SQLite 3 · WAL mode · FK constraints · File: perf_data.db</text>
+
+          <!-- Table boxes — 6 tables -->
+          <!-- users -->
+          <rect x="28" y="652" width="118" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="87" y="672" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="700" fill="#fde68a">users</text>
+          <text x="87" y="688" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#fbbf24">id · username · role · hash</text>
+          <!-- projects -->
+          <rect x="159" y="652" width="118" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="218" y="672" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="700" fill="#fde68a">projects</text>
+          <text x="218" y="688" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#fbbf24">id · name · customer</text>
+          <!-- sub_projects -->
+          <rect x="290" y="652" width="135" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="357" y="672" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="700" fill="#fde68a">sub_projects</text>
+          <text x="357" y="688" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#fbbf24">id · name · project_id ↗</text>
+          <!-- test_runs -->
+          <rect x="438" y="652" width="130" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="503" y="672" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="700" fill="#fde68a">test_runs</text>
+          <text x="503" y="688" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#fbbf24">id · name · tool · status</text>
+          <!-- transactions -->
+          <rect x="581" y="652" width="130" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="646" y="672" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="10.5" font-weight="700" fill="#fde68a">transactions</text>
+          <text x="646" y="688" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8.5" fill="#fbbf24">name · p90 · avg · tps</text>
+          <!-- user_project_access -->
+          <rect x="724" y="652" width="118" height="50" rx="7" fill="url(#g-tbl)" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <text x="783" y="668" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" font-weight="700" fill="#fde68a">user_project</text>
+          <text x="783" y="681" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="9" font-weight="700" fill="#fde68a">_access</text>
+          <text x="783" y="695" text-anchor="middle" font-family="Inter,'Segoe UI',sans-serif" font-size="8" fill="#fbbf24">user_id ↔ project_id</text>
+        </svg>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;">
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="width:12px;height:12px;border-radius:3px;background:#1d4ed8;display:inline-block;border:1px solid #3b82f6;"></span> Browser / Frontend
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="width:12px;height:12px;border-radius:3px;background:#312e81;display:inline-block;border:1px solid #6366f1;"></span> Express API Server
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="width:12px;height:12px;border-radius:3px;background:#064e3b;display:inline-block;border:1px solid #10b981;"></span> Business Logic Services
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="width:12px;height:12px;border-radius:3px;background:#7c2d12;display:inline-block;border:1px solid #f59e0b;"></span> Data Layer (SQLite)
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="width:12px;height:12px;border-radius:3px;background:#312e81;display:inline-block;border:1.5px solid #818cf8;"></span> Admin-only components
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--slate-500);">
+          <span style="border-top:2px dashed #60a5fa;width:20px;display:inline-block;"></span> State / infrastructure
+        </span>
+      </div>
+    </section>
+
+    <!-- ══ TECH STACK ══ -->
+    <section id="stack">
+      <h2><span class="emoji">🛠</span> Technology Stack</h2>
+      <h3>Backend</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Package</th><th>Version</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>express</code></td><td>4.18</td><td>HTTP server and REST API framework</td></tr>
+            <tr><td><code>better-sqlite3</code></td><td>12.x</td><td>Synchronous SQLite — zero-config, file-based database</td></tr>
+            <tr><td><code>jsonwebtoken</code></td><td>9.x</td><td>JWT signing and verification for authentication</td></tr>
+            <tr><td><code>multer</code></td><td>1.4</td><td>Multipart file upload handling</td></tr>
+            <tr><td><code>xlsx</code></td><td>0.18</td><td>Excel (.xlsx) and CSV file parsing</td></tr>
+            <tr><td><code>dotenv</code></td><td>16.x</td><td>Environment variable loading from .env</td></tr>
+            <tr><td><code>cors</code></td><td>2.8</td><td>Cross-origin resource sharing configuration</td></tr>
+            <tr><td><code>typescript</code></td><td>5.3</td><td>Static typing and compile-time safety</td></tr>
+            <tr><td><code>ts-node / nodemon</code></td><td>—</td><td>Hot-reload development server</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Frontend</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Package</th><th>Version</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>react</code></td><td>18.2</td><td>UI framework with hooks</td></tr>
+            <tr><td><code>react-router-dom</code></td><td>6.22</td><td>Client-side routing with protected routes</td></tr>
+            <tr><td><code>axios</code></td><td>1.6</td><td>HTTP client with request/response interceptors</td></tr>
+            <tr><td><code>recharts</code></td><td>2.12</td><td>SVG-based charts (bar, line, trend)</td></tr>
+            <tr><td><code>tailwindcss</code></td><td>3.4</td><td>Utility-first CSS framework</td></tr>
+            <tr><td><code>@heroicons/react</code></td><td>2.1</td><td>Icon set (outline style)</td></tr>
+            <tr><td><code>clsx</code></td><td>2.1</td><td>Conditional CSS class composition</td></tr>
+            <tr><td><code>date-fns</code></td><td>3.3</td><td>Date formatting and parsing</td></tr>
+            <tr><td><code>react-dropzone</code></td><td>14.2</td><td>Drag-and-drop file upload component</td></tr>
+            <tr><td><code>jspdf</code></td><td>2.x</td><td>Client-side PDF generation</td></tr>
+            <tr><td><code>jspdf-autotable</code></td><td>3.x</td><td>Table rendering plugin for jsPDF</td></tr>
+            <tr><td><code>xlsx</code></td><td>0.20</td><td>Client-side Excel/CSV parsing for transaction filter import</td></tr>
+            <tr><td><code>vite</code></td><td>5.4</td><td>Build tool, HMR dev server, API proxy</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ PROJECT STRUCTURE ══ -->
+    <section id="structure">
+      <h2><span class="emoji">📂</span> Project Structure</h2>
+      <pre><code><span class="var">PerformanceTestResultsComparison/</span>
+│
+├── <span class="fn">package.json</span>                    <span class="cmt"># Root workspace — install:all, dev:*, build:*</span>
+│
+├── <span class="var">backend/</span>
+│   ├── <span class="str">.env</span>                        <span class="cmt"># Environment configuration (PORT, JWT_SECRET…)</span>
+│   ├── <span class="str">.env.example</span>                <span class="cmt"># Template for new deployments</span>
+│   ├── <span class="fn">tsconfig.json</span>               <span class="cmt"># ES2020, commonjs, outDir: dist</span>
+│   ├── <span class="var">data/</span>
+│   │   └── perf_comparison.db      <span class="cmt"># SQLite database (auto-created on start)</span>
+│   ├── <span class="var">uploads/</span>                    <span class="cmt"># Uploaded test result files</span>
+│   └── <span class="var">src/</span>
+│       ├── <span class="fn">index.ts</span>                <span class="cmt"># Express app entry + dashboard stats endpoint</span>
+│       ├── <span class="fn">database.ts</span>             <span class="cmt"># Schema init, password hashing (scrypt)</span>
+│       ├── <span class="var">middleware/</span>
+│       │   ├── <span class="fn">auth.ts</span>             <span class="cmt"># requireAuth + requireAdmin middleware</span>
+│       │   └── <span class="fn">upload.ts</span>           <span class="cmt"># Multer config (file type + size validation)</span>
+│       ├── <span class="var">routes/</span>
+│       │   ├── <span class="fn">auth.ts</span>             <span class="cmt"># Login (DB-based) + user CRUD</span>
+│       │   ├── <span class="fn">projects.ts</span>         <span class="cmt"># CRUD — access-filtered for non-admins</span>
+│       │   ├── <span class="fn">subprojects.ts</span>      <span class="cmt"># CRUD + transaction filter endpoints</span>
+│       │   ├── <span class="fn">testruns.ts</span>         <span class="cmt"># Upload, rename, delete test runs</span>
+│       │   ├── <span class="fn">comparison.ts</span>       <span class="cmt"># Comparison engine orchestration</span>
+│       │   └── <span class="fn">trends.ts</span>           <span class="cmt"># Trend data queries per sub-project</span>
+│       └── <span class="var">utils/</span>
+│           ├── <span class="fn">fileParser.ts</span>       <span class="cmt"># CSV/Excel → normalized TransactionRow[]</span>
+│           └── <span class="fn">comparisonEngine.ts</span> <span class="cmt"># Diff calc, regression detection, scoring</span>
+│
+└── <span class="var">frontend/</span>
+    ├── <span class="fn">vite.config.ts</span>              <span class="cmt"># Port 5173 + /api proxy → localhost:6001</span>
+    ├── <span class="fn">tailwind.config.js</span>          <span class="cmt"># Custom brand + regression/improvement colors</span>
+    └── <span class="var">src/</span>
+        ├── <span class="fn">App.tsx</span>                 <span class="cmt"># Routes, ProtectedRoute, AdminRoute</span>
+        ├── <span class="fn">main.tsx</span>                <span class="cmt"># AuthProvider mount point</span>
+        ├── <span class="var">api/</span>
+        │   ├── <span class="fn">client.ts</span>           <span class="cmt"># Axios instance + Bearer token interceptor</span>
+        │   ├── <span class="fn">comparison.ts</span>       <span class="cmt"># Comparison + dashboard API calls</span>
+        │   ├── <span class="fn">projects.ts</span>         <span class="cmt"># Project + subproject + filter API</span>
+        │   ├── <span class="fn">testruns.ts</span>         <span class="cmt"># Test run upload + CRUD</span>
+        │   └── <span class="fn">users.ts</span>            <span class="cmt"># User management API (admin)</span>
+        ├── <span class="var">components/</span>
+        │   ├── <span class="fn">Sidebar.tsx</span>         <span class="cmt"># Role-aware nav (admin section hidden for users)</span>
+        │   ├── <span class="fn">ComparisonTable.tsx</span> <span class="cmt"># Tabbed comparison (RT / Throughput / Error Rate)</span>
+        │   ├── <span class="fn">InsightCard.tsx</span>     <span class="cmt"># Severity-coloured insight display</span>
+        │   └── <span class="var">charts/</span>
+        │       ├── <span class="fn">ResponseTimeChart.tsx</span> <span class="cmt"># AvgResponseTimeChart + P90ResponseTimeChart</span>
+        │       ├── <span class="fn">ThroughputChart.tsx</span>
+        │       ├── <span class="fn">ErrorRateChart.tsx</span>    <span class="cmt"># Error rate bar chart with 1% reference line</span>
+        │       └── <span class="fn">TrendChart.tsx</span>        <span class="cmt"># Multi-metric line chart (name + date X-axis)</span>
+        ├── <span class="var">contexts/</span>
+        │   └── <span class="fn">AuthContext.tsx</span>      <span class="cmt"># Auth state, role, isAdmin, login, logout</span>
+        ├── <span class="var">utils/</span>
+        │   └── <span class="fn">generateComparisonPDF.ts</span> <span class="cmt"># jsPDF-based in-browser PDF report generator</span>
+        ├── <span class="var">pages/</span>
+        │   ├── <span class="fn">Login.tsx</span>           <span class="cmt"># Full-page JWT login form</span>
+        │   ├── <span class="fn">Dashboard.tsx</span>       <span class="cmt"># Stats + grouped runs + quick compare</span>
+        │   ├── <span class="fn">Projects.tsx</span>        <span class="cmt"># Project list (admin-only create/delete)</span>
+        │   ├── <span class="fn">ProjectDetail.tsx</span>   <span class="cmt"># Sub-project management</span>
+        │   ├── <span class="fn">SubProjectDetail.tsx</span><span class="cmt"># Test runs, inline edit, filters, trends</span>
+        │   ├── <span class="fn">Upload.tsx</span>          <span class="cmt"># 3-step upload wizard with drag-and-drop</span>
+        │   ├── <span class="fn">Comparison.tsx</span>      <span class="cmt"># Full comparison UI with charts + insights</span>
+        │   ├── <span class="fn">Trends.tsx</span>          <span class="cmt"># Multi-metric trend analysis page</span>
+        │   └── <span class="fn">Admin.tsx</span>           <span class="cmt"># User management (admin only)</span>
+        └── <span class="var">types/</span>
+            └── <span class="fn">index.ts</span>            <span class="cmt"># All shared TypeScript interfaces</span></code></pre>
+    </section>
+
+    <!-- ══ GETTING STARTED ══ -->
+    <section id="getting-started">
+      <h2><span class="emoji">🏁</span> Getting Started (Local)</h2>
+      <h3>Prerequisites</h3>
+      <ul>
+        <li><strong>Node.js 18+</strong> — <a href="https://nodejs.org" target="_blank">nodejs.org</a></li>
+        <li><strong>npm 9+</strong> — bundled with Node</li>
+        <li><strong>Git</strong></li>
+      </ul>
+
+      <ol class="steps" style="list-style:none;padding:0;">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Clone the repository</div>
+            <pre><code><span class="fn">git clone</span> <span class="str">&lt;your-repo-url&gt;</span> PerformanceTestResultsComparison
+<span class="fn">cd</span> PerformanceTestResultsComparison</code></pre>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Install all dependencies (frontend + backend) in one step</div>
+            <pre><code>npm run install:all</code></pre>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Configure the backend environment</div>
+            <pre><code>cp backend/.env.example backend/.env</code></pre>
+            <p style="margin:.5rem 0 .4rem;font-size:.85rem;color:var(--slate-600);">Edit <code>backend/.env</code>:</p>
+            <pre><code><span class="var">PORT</span>=<span class="num">6001</span>
+<span class="var">DB_PATH</span>=<span class="str">./data/perf_comparison.db</span>
+<span class="var">UPLOAD_DIR</span>=<span class="str">./uploads</span>
+<span class="var">AUTH_USERNAME</span>=<span class="str">admin</span>
+<span class="var">AUTH_PASSWORD</span>=<span class="str">admin123</span>
+<span class="var">JWT_SECRET</span>=<span class="str">change-this-to-a-long-random-string</span></code></pre>
+            <div class="warn-box">⚠️ <span><strong>JWT_SECRET must be changed</strong> before sharing access with others. The default admin is seeded automatically on first launch.</span></div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Start both development servers</div>
+            <pre><code><span class="cmt"># Terminal 1 — Backend with hot-reload</span>
+npm run dev:backend
+
+<span class="cmt"># Terminal 2 — Frontend with HMR</span>
+npm run dev:frontend</code></pre>
+            <div class="table-wrap" style="margin-top:.75rem;">
+              <table>
+                <thead><tr><th>Service</th><th>URL</th></tr></thead>
+                <tbody>
+                  <tr><td>Frontend (React SPA)</td><td><code>http://localhost:5173</code></td></tr>
+                  <tr><td>Backend (API)</td><td><code>http://localhost:6001</code></td></tr>
+                  <tr><td>Health Check</td><td><code>http://localhost:6001/api/health</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Log in at <a href="http://localhost:5173">http://localhost:5173</a></div>
+            <p style="font-size:.85rem;color:var(--slate-600);">Default credentials: <strong>admin</strong> / <strong>admin123</strong></p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ══ ENV VARS ══ -->
+    <section id="env-vars">
+      <h2><span class="emoji">🔧</span> Environment Variables</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>PORT</code></td><td><code>3001</code></td><td>Backend HTTP port</td></tr>
+            <tr><td><code>DB_PATH</code></td><td><code>./data/perf_comparison.db</code></td><td>SQLite database file path — will be created automatically</td></tr>
+            <tr><td><code>UPLOAD_DIR</code></td><td><code>./uploads</code></td><td>Directory where uploaded result files are stored on disk</td></tr>
+            <tr><td><code>AUTH_USERNAME</code></td><td><code>admin</code></td><td>Username for the initial admin account — seeded once on first start</td></tr>
+            <tr><td><code>AUTH_PASSWORD</code></td><td><code>admin123</code></td><td>Password for the initial admin account — change before production</td></tr>
+            <tr><td><code>JWT_SECRET</code></td><td><em>insecure default</em></td><td>Secret key for JWT signing — <strong>must be changed in production</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ RBAC ══ -->
+    <section id="rbac">
+      <h2><span class="emoji">👥</span> Role-Based Access Control</h2>
+      <p>PerfInsight uses a two-tier role model enforced on both frontend and backend.</p>
+      <div class="role-grid">
+        <div class="role-card role-admin">
+          <div class="role-title">🛡 Admin <span class="role-badge">Full Access</span></div>
+          <div class="perm"><span class="perm-yes">✅</span> Create / edit / delete Projects</div>
+          <div class="perm"><span class="perm-yes">✅</span> Create / edit / delete Sub-Projects</div>
+          <div class="perm"><span class="perm-yes">✅</span> Create / edit / delete Users</div>
+          <div class="perm"><span class="perm-yes">✅</span> Assign projects to users</div>
+          <div class="perm"><span class="perm-yes">✅</span> Upload, compare, view trends (all projects)</div>
+          <div class="perm"><span class="perm-yes">✅</span> Configure transaction filters</div>
+          <div class="perm"><span class="perm-yes">✅</span> Access User Management page</div>
+        </div>
+        <div class="role-card role-user">
+          <div class="role-title">👤 User <span class="role-badge">Restricted</span></div>
+          <div class="perm"><span class="perm-yes">✅</span> View Projects &amp; Sub-Projects (allocated only)</div>
+          <div class="perm"><span class="perm-yes">✅</span> Upload test results (allocated projects only)</div>
+          <div class="perm"><span class="perm-yes">✅</span> Compare test runs (allocated projects only)</div>
+          <div class="perm"><span class="perm-yes">✅</span> View trend analysis (allocated projects only)</div>
+          <div class="perm"><span class="perm-yes">✅</span> Configure transaction filters</div>
+          <div class="perm"><span class="perm-yes">✅</span> Edit test run names (inline)</div>
+          <div class="perm"><span class="perm-yes">✅</span> Export PDF comparison reports</div>
+          <div class="perm"><span class="perm-no">❌</span> Cannot create/delete projects or sub-projects</div>
+          <div class="perm"><span class="perm-no">❌</span> Cannot access User Management</div>
+          <div class="perm"><span class="perm-no">❌</span> Cannot see unassigned projects</div>
+        </div>
+      </div>
+      <h3>How project access works</h3>
+      <ol>
+        <li>An <strong>Admin</strong> creates a user account via <strong>Admin → User Management</strong></li>
+        <li>During creation, the Admin selects which <strong>Projects</strong> the user can see</li>
+        <li>The user immediately sees only those projects across Dashboard, Upload, Compare, and Trends</li>
+        <li>Sub-projects are implicitly accessible when the parent project is allocated</li>
+      </ol>
+      <h3>Last-admin protection</h3>
+      <ul>
+        <li>The system prevents deleting the last admin account</li>
+        <li>The system prevents demoting the last admin to a regular user</li>
+        <li>A user cannot delete their own account via the API</li>
+      </ul>
+    </section>
+
+    <!-- ══ HOW TO USE ══ -->
+    <section id="how-to-use">
+      <h2><span class="emoji">📖</span> How to Use the Application</h2>
+      <p>A step-by-step guide covering every feature of PerfInsight — from first login to exporting a PDF report.</p>
+      <p class="screenshot-label">Dashboard overview</p>
+      <img src="snapshots/DashboardPage.png" alt="PerfInsight Dashboard" class="screenshot">
+
+      <!-- LOGIN -->
+      <span class="section-anchor" id="how-login"></span>
+      <h3>1. Login</h3>
+      <ol>
+        <li>Open the application URL in your browser.</li>
+        <li>Enter your <strong>Username</strong> and <strong>Password</strong>.</li>
+        <li>Click <strong>Sign In</strong>. You will be redirected to the Dashboard.</li>
+      </ol>
+      <div class="info-box">ℹ️ Sessions last 8 hours. After expiry you will be automatically redirected to the Login page.</div>
+
+      <!-- PROJECTS -->
+      <h3>2. Managing Projects and Sub-Projects <em style="font-weight:400;font-size:.8rem;color:var(--slate-400)">(Admin only)</em></h3>
+      <h4>Creating a Project</h4>
+      <ol>
+        <li>Click <strong>Projects</strong> in the sidebar.</li>
+        <li>Click <strong>New Project</strong> and fill in: Project Name, Customer Name, Description (optional).</li>
+        <li>Click <strong>Create</strong>.</li>
+      </ol>
+      <h4>Creating a Sub-Project</h4>
+      <ol>
+        <li>Open a project, then click <strong>New Sub-Project</strong>.</li>
+        <li>Enter a Name and optional Description, then click <strong>Create</strong>.</li>
+      </ol>
+      <div class="info-box">ℹ️ Deleting a project cascades — all sub-projects, test runs, and uploaded files are removed.</div>
+      <p class="screenshot-label">Sub-project detail page</p>
+      <img src="snapshots/ProjectsPage.png" alt="Projects and Sub-Projects page" class="screenshot">
+
+      <!-- USERS -->
+      <h3>3. Managing Users and Access <em style="font-weight:400;font-size:.8rem;color:var(--slate-400)">(Admin only)</em></h3>
+      <ol>
+        <li>Click <strong>Admin / User Management</strong> in the sidebar.</li>
+        <li>Click <strong>New User</strong> and enter Username, Password, and Role (<em>admin</em> or <em>user</em>).</li>
+        <li>Check the <strong>Projects</strong> this user can access.</li>
+        <li>Click <strong>Create User</strong>.</li>
+      </ol>
+      <p>A <em>user</em> role can only see projects explicitly allocated to them. Admins see all projects.</p>
+
+      <!-- UPLOAD -->
+      <span class="section-anchor" id="how-upload"></span>
+      <h3>4. Uploading Test Results</h3>
+      <ol>
+        <li>Click <strong>Upload</strong> in the sidebar (or the <strong>Upload New Test Run</strong> button on any sub-project page).</li>
+        <li>Select the <strong>Project</strong> and <strong>Sub-Project</strong>.</li>
+        <li>Drag-and-drop your result file or click to browse. Supported: <code>.csv</code>, <code>.xlsx</code>, <code>.jtl</code></li>
+        <li>Fill in optional metadata: Test Run Name, Build / Version, User Load (VUs), Test Tool, Status (Good / Bad / Under Review), Notes.</li>
+        <li>Click <strong>Upload</strong>. The parsed transaction count will be displayed.</li>
+      </ol>
+      <h4>Renaming a Test Run</h4>
+      <p>Click the <strong>pencil icon</strong> in the test run row on the Sub-Project Detail page, type the new name, and press Enter or click the save icon.</p>
+      <p class="screenshot-label">Upload test results — step 3: file upload</p>
+      <img src="snapshots/UploadTestResultsPage.png" alt="Upload Test Results page" class="screenshot">
+
+      <!-- VIEWING TEST RUN DETAILS -->
+      <h3>5. Viewing Test Run Details</h3>
+      <ol>
+        <li>Navigate to a sub-project (Projects → Project → Sub-Project).</li>
+        <li>Click any <strong>test run row</strong> to open the Transactions popup.</li>
+      </ol>
+      <p>The popup shows every transaction with columns: Transaction Name, Samples, Avg RT (s), P90 RT (s), P95 RT (s), P99 RT (s), Error %, Throughput (req/s), Min (s), Max (s). All response times are shown with 2 decimal places.</p>
+      <h4>Show Configured Transactions Only</h4>
+      <p>If a Transaction Filter is configured for the sub-project, a checkbox <strong>"Show configured transactions only"</strong> appears at the top of the popup. Checking it limits the view to your configured transaction set. The header updates to show <em>"Transactions (N of Total)"</em>.</p>
+
+      <!-- COMPARING -->
+      <span class="section-anchor" id="how-compare"></span>
+      <h3>6. Comparing Test Runs</h3>
+      <h4>Starting a comparison</h4>
+      <p>From the <strong>Dashboard</strong>: expand a sub-project, select Baseline and Compare from the dropdowns, click <strong>Compare</strong>.<br>
+         From the <strong>Comparison page</strong>: select Project → Sub-Project → Baseline → Compare → <strong>Run Comparison</strong>.</p>
+
+      <h4>Reading the Results</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Section</th><th>Content</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Summary at a Glance</strong></td><td>8 stat cards — Compared, Improved, Degraded, Stable, Above 5s, Peak RT, Max Regression, Best Improvement</td></tr>
+            <tr><td><strong>Executive Summary</strong></td><td>Narrative: overall outcome, peak response time, worst regression, best improvement, verdict (Pass / Partial / Fail)</td></tr>
+            <tr><td><strong>Test-Level Metrics</strong></td><td>6-row table comparing Total Transactions, Avg RT, P90 RT, Error Count, Error Rate, Throughput</td></tr>
+            <tr><td><strong>Insights</strong></td><td>🔴 Critical / 🟠 Warning / 🟢 Success / 🔵 Info — auto-generated per transaction</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Transaction Comparison Tabs</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tab</th><th>Columns</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Response Times</strong></td><td>Transaction Name | Baseline Avg | Compare Avg | Avg Change | Baseline P90 | Compare P90 | P90 Change | Status</td></tr>
+            <tr><td><strong>Throughput</strong></td><td>Transaction Name | Baseline TPS | Compare TPS | Change | Status</td></tr>
+            <tr><td><strong>Error Rate</strong></td><td>Transaction Name | Baseline Err% | Compare Err% | Change | Status</td></tr>
+            <tr><td><strong>Charts</strong></td><td>Avg RT chart · P90 RT chart · Throughput chart · Error Rate chart (all using actual test run names)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Click any column header to sort. Degraded rows are highlighted red; improved rows are highlighted green. The Error Rate chart sorts transactions by highest error rate first and shows a dashed 1% reference line.</p>
+      <p class="screenshot-label">Comparison results — summary, executive summary &amp; insights</p>
+      <img src="snapshots/CompareResults_1.png" alt="Comparison results — top section" class="screenshot">
+      <div class="screenshot-grid">
+        <div>
+          <p class="screenshot-label">Metrics &amp; insights detail</p>
+          <img src="snapshots/CompareResults_2.png" alt="Comparison results — metrics and insights" class="screenshot">
+        </div>
+        <div>
+          <p class="screenshot-label">Transaction-level table</p>
+          <img src="snapshots/CompareResults_3.png" alt="Comparison results — transaction table" class="screenshot">
+        </div>
+      </div>
+
+      <!-- TRENDS -->
+      <span class="section-anchor" id="how-trends"></span>
+      <h3>7. Trend Analysis</h3>
+      <ol>
+        <li>Click <strong>Trends</strong> in the sidebar.</li>
+        <li>Select a <strong>Project</strong>, then a <strong>Sub-Project</strong>.</li>
+        <li>Select a <strong>Transaction</strong> from the dropdown (or click a quick-pick button below).</li>
+        <li>Optionally change the <strong>Filter</strong> to <em>Good Runs Only</em>.</li>
+      </ol>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Chart</th><th>Metric</th><th>Y-Axis</th></tr></thead>
+          <tbody>
+            <tr><td>Average Response Time Trend</td><td>avg_response_time</td><td>Seconds</td></tr>
+            <tr><td>P90 Response Time Trend</td><td>p90_response_time + p99_response_time</td><td>Seconds</td></tr>
+            <tr><td>Throughput Trend</td><td>throughput</td><td>req/s</td></tr>
+            <tr><td>Error Rate Trend</td><td>error_rate</td><td>%</td></tr>
+            <tr><td>User Load per Test Run</td><td>user_load</td><td>VUs</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>If a Transaction Filter is active, only configured transactions appear in the dropdown. A blue badge below the selectors shows the count.</p>
+      <p class="screenshot-label">Trend analysis — multi-metric charts per transaction</p>
+      <img src="snapshots/TrendAnalysis.png" alt="Trend Analysis page" class="screenshot">
+
+      <!-- FILTERS -->
+      <span class="section-anchor" id="how-filters"></span>
+      <h3>8. Transaction Filter Configuration</h3>
+      <p>Filters specify which transactions are relevant for a sub-project. Once set, they apply to the Trend Analysis transaction dropdown and the "Show configured transactions only" checkbox in the test run popup.</p>
+      <h4>Opening the filter</h4>
+      <p>Navigate to a sub-project detail page and click <strong>Configure Transactions</strong> (filter icon button).</p>
+      <h4>Manual selection</h4>
+      <ol>
+        <li>Use the <strong>search box</strong> to filter by name.</li>
+        <li>Check/uncheck individual transactions.</li>
+        <li>Use <strong>Select All</strong> / <strong>Deselect All</strong> to act on all visible (searched) results.</li>
+        <li>Click <strong>Save</strong>.</li>
+      </ol>
+      <h4>Import from Excel / CSV</h4>
+      <ol>
+        <li>Click <strong>Import from Excel</strong> inside the filter modal.</li>
+        <li>Select a <code>.xlsx</code> or <code>.csv</code> file. The importer looks for a column named <code>Transaction</code>, <code>Name</code>, or <code>Label</code> (case-insensitive); falls back to the first column.</li>
+        <li>All matching transaction names are automatically checked. A confirmation banner shows the import count.</li>
+        <li>Review the selection and click <strong>Save</strong>.</li>
+      </ol>
+      <div class="info-box">💡 You can combine Excel import with manual selection — import a base list, then add or remove individual transactions.</div>
+
+      <!-- PDF -->
+      <span class="section-anchor" id="how-pdf"></span>
+      <h3>9. Exporting PDF Reports</h3>
+      <ol>
+        <li>Run a comparison to see the results page.</li>
+        <li>Click <strong>Export PDF Report</strong> (top-right area).</li>
+        <li>The PDF is generated in-browser and downloaded automatically.</li>
+      </ol>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>PDF Section</th><th>Content</th></tr></thead>
+          <tbody>
+            <tr><td>Header</td><td>Test run names + export timestamp</td></tr>
+            <tr><td>Overview</td><td>Project, build, tool, execution date</td></tr>
+            <tr><td>Summary at a Glance</td><td>All 8 stat cards</td></tr>
+            <tr><td>Executive Summary</td><td>Full narrative text</td></tr>
+            <tr><td>Test-Level Metrics</td><td>6-row baseline vs compare table with change indicators</td></tr>
+            <tr><td>Insights</td><td>All categorized insights</td></tr>
+            <tr><td>Transaction Comparison</td><td>Full per-transaction table (page 2+)</td></tr>
+            <tr><td>Footer</td><td>Page numbers on every page</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box">ℹ️ PDF generation uses <code>jspdf</code> + <code>jspdf-autotable</code> entirely in the browser — no server round-trip. All special characters are normalized to ASCII for maximum compatibility.</div>
+      <p class="screenshot-label">Generated PDF report (page 1)</p>
+      <img src="snapshots/CompareResults_PDF_Report.png" alt="PDF comparison report" class="screenshot">
+    </section>
+
+    <!-- ══ FILE FORMATS ══ -->
+    <section id="formats">
+      <h2><span class="emoji">📄</span> Supported File Formats</h2>
+      <h3>JMeter (JTL / Aggregate Report CSV)</h3>
+      <p>The parser auto-detects JMeter format from column headers.</p>
+      <pre><code><span class="cmt"># Raw JTL columns:</span>
+timeStamp, elapsed, label, responseCode, success, bytes, latency, connect
+
+<span class="cmt"># OR Aggregate Report columns:</span>
+Label, # Samples, Average, Min, Max, 90th pct, 95th pct, 99th pct, Error %, Throughput, KB/sec</code></pre>
+      <h3>Generic CSV / Excel — Supported Columns</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Column Name(s)</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>Label</code> / <code>Transaction</code> / <code>Name</code></td><td>✅ Yes</td><td>Transaction / endpoint name</td></tr>
+            <tr><td><code>Samples</code> / <code># Samples</code></td><td>—</td><td>Number of requests in the run</td></tr>
+            <tr><td><code>Average</code> / <code>Avg</code></td><td>—</td><td>Average response time (ms → auto-converted)</td></tr>
+            <tr><td><code>Min</code></td><td>—</td><td>Minimum response time</td></tr>
+            <tr><td><code>Max</code></td><td>—</td><td>Maximum response time</td></tr>
+            <tr><td><code>90th pct</code> / <code>P90</code></td><td>—</td><td>P90 response time (primary regression metric)</td></tr>
+            <tr><td><code>95th pct</code> / <code>P95</code></td><td>—</td><td>95th percentile (stored, displayed only)</td></tr>
+            <tr><td><code>99th pct</code> / <code>P99</code></td><td>—</td><td>99th percentile (stored, displayed only)</td></tr>
+            <tr><td><code>Error %</code> / <code>Error Rate</code></td><td>—</td><td>Error rate percentage</td></tr>
+            <tr><td><code>Throughput</code> / <code>RPS</code></td><td>—</td><td>Requests per second</td></tr>
+            <tr><td><code>KB/sec</code> / <code>Received KB/sec</code></td><td>—</td><td>Data transfer throughput</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box">ℹ️ Values &gt; 100 in response time columns are treated as milliseconds and automatically divided by 1000 before storage.</div>
+      <h3>Supported Tools</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Formats</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Apache JMeter</td><td><code>.jtl</code>, <code>.csv</code></td><td>Aggregate report or raw JTL export</td></tr>
+            <tr><td>Gatling</td><td><code>.csv</code></td><td>stats.csv from simulation folder</td></tr>
+            <tr><td>K6</td><td><code>.csv</code>, <code>.xlsx</code></td><td>Custom summary export script</td></tr>
+            <tr><td>Locust</td><td><code>.csv</code></td><td>stats_history.csv export</td></tr>
+            <tr><td>Custom / Other</td><td><code>.csv</code>, <code>.xlsx</code></td><td>Any normalized format matching columns above</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ ENGINE ══ -->
+    <section id="engine">
+      <h2><span class="emoji">⚙️</span> Comparison Engine</h2>
+      <h3>Metric Difference Formula</h3>
+      <pre><code><span class="fn">diff</span>% = ((compare_value - baseline_value) / baseline_value) × <span class="num">100</span></code></pre>
+      <h3>Regression Detection Thresholds</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Regression</th><th>Improvement</th><th>Direction</th></tr></thead>
+          <tbody>
+            <tr><td>Avg Response Time</td><td>diff &gt; +10%</td><td>diff &lt; −10%</td><td>Higher = worse</td></tr>
+            <tr><td><strong>P90 Response Time</strong></td><td>diff &gt; +10%</td><td>diff &lt; −10%</td><td>Higher = worse (primary metric)</td></tr>
+            <tr><td>Throughput (RPS)</td><td>diff &lt; −10%</td><td>diff &gt; +10%</td><td>Lower = worse</td></tr>
+            <tr><td>Error Rate</td><td>absolute increase &gt; 5%</td><td>absolute decrease &gt; 5%</td><td>Higher = worse</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Performance Score (0–100)</h3>
+      <pre><code>Score starts at <span class="num">100</span>
+
+Each regression deducts:
+  Critical  (P90 regression > <span class="num">25</span>%)   → <span class="num">−5</span> points per occurrence
+  Warning   (P90 regression <span class="num">10</span>–<span class="num">25</span>%)  → <span class="num">−2</span> points per occurrence
+  Error rate regression            → <span class="num">−3</span> points per occurrence
+
+Minimum score: <span class="num">0</span></code></pre>
+      <div class="score-demo">
+        <div class="score-card"><div class="score-num score-good">87</div><div class="score-label">Good (≥ 80)</div></div>
+        <div class="score-card"><div class="score-num score-moderate">65</div><div class="score-label">Moderate (≥ 60)</div></div>
+        <div class="score-card"><div class="score-num score-poor">42</div><div class="score-label">Poor (&lt; 60)</div></div>
+      </div>
+      <h3>Insight Severity Levels</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Level</th><th>Trigger</th></tr></thead>
+          <tbody>
+            <tr><td>🔴 <strong>Critical</strong></td><td>P90 regression &gt; 25%</td></tr>
+            <tr><td>🟠 <strong>Warning</strong></td><td>P90 regression 10–25% or error rate increase</td></tr>
+            <tr><td>🟢 <strong>Success</strong></td><td>P90 improvement &gt; 10%</td></tr>
+            <tr><td>🔵 <strong>Info</strong></td><td>New or missing transactions detected between runs</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Comparison Page Layout</h3>
+      <p>When a comparison result is loaded, the page presents results in this order:</p>
+      <ol style="margin:.5rem 0 1rem 1.25rem;line-height:2;">
+        <li><strong>Summary at a Glance</strong> — 8 stat cards: Compared, Improved, Degraded, Stable, Above 5s, Peak RT, Max Regression, Best Improvement</li>
+        <li><strong>Executive Summary</strong> — Narrative paragraph(s) describing outcome, peak RT, largest regression, best improvement, and a final verdict</li>
+        <li><strong>Test-Level Metrics Comparison</strong> — 6-row table: Total Transactions, Avg Response Time, P90 RT, Error Count, Error Rate, Throughput (Baseline vs Compare with colour-coded change)</li>
+        <li><strong>Insights</strong> — Auto-generated categorized observations</li>
+        <li><strong>Transaction Comparison (4 tabs)</strong>:
+          <ul style="margin-top:.3rem;line-height:1.8;">
+            <li><em>Response Times</em> — Avg RT and P90 RT columns, sortable, color-coded by status</li>
+            <li><em>Throughput</em> — TPS per transaction with change %</li>
+            <li><em>Error Rate</em> — Error % per transaction with change %</li>
+            <li><em>Charts</em> — Avg RT chart, P90 RT chart, Throughput chart, Error Rate chart (all using actual test run names in legends)</li>
+          </ul>
+        </li>
+      </ol>
+
+      <h3>PDF Export</h3>
+      <p>The <strong>Export PDF Report</strong> button (top-right, visible when a comparison result is loaded) generates an A4 landscape PDF entirely in-browser using <code>jspdf</code> + <code>jspdf-autotable</code>. The PDF contains:</p>
+      <ul style="margin:.5rem 0 1rem 1.25rem;line-height:2;">
+        <li>Navy page header with test run names</li>
+        <li>Comparison overview table (project, build, tool, date)</li>
+        <li>Summary at a Glance cards</li>
+        <li>Executive Summary narrative</li>
+        <li>Test-Level Metrics table with colour-coded change column</li>
+        <li>Insights table</li>
+        <li>Full Transaction Comparison table (page 2+)</li>
+        <li>Timestamped footer with page numbers</li>
+      </ul>
+      <div class="info-box">ℹ️ PDF generation runs entirely in the browser — no server round-trip required. The filename is automatically derived from the baseline and compare run names.</div>
+    </section>
+
+    <!-- ══ API ══ -->
+    <section id="api">
+      <h2><span class="emoji">📡</span> API Reference</h2>
+      <div class="info-box">ℹ️ All endpoints except <code>POST /api/auth/login</code> and <code>GET /api/health</code> require <code>Authorization: Bearer &lt;token&gt;</code></div>
+
+      <h3>Authentication</h3>
+      <pre><code><span class="cmt"># Login</span>
+<span class="kw">POST</span>  /api/auth/login         <span class="cmt"># { username, password } → { token, username, role }</span>
+<span class="kw">GET</span>   /api/auth/me            <span class="cmt"># → { id, username, role }</span>
+
+<span class="cmt"># User Management (Admin only)</span>
+<span class="kw">GET</span>   /api/auth/users         <span class="cmt"># List all users with project assignments</span>
+<span class="kw">POST</span>  /api/auth/users         <span class="cmt"># Create { username, password, role, project_ids[] }</span>
+<span class="kw">PUT</span>   /api/auth/users/:id     <span class="cmt"># Update { password?, role?, project_ids?[] }</span>
+<span class="kw">DELETE</span> /api/auth/users/:id   <span class="cmt"># Delete user (cannot delete last admin or self)</span></code></pre>
+
+      <h3>Projects</h3>
+      <pre><code><span class="kw">GET</span>    /api/projects                <span class="cmt"># List (access-filtered for non-admins)</span>
+<span class="kw">POST</span>   /api/projects                <span class="cmt"># Create { name, customer_name, description? }  [Admin]</span>
+<span class="kw">GET</span>    /api/projects/:id            <span class="cmt"># Get single project with counts</span>
+<span class="kw">PUT</span>    /api/projects/:id            <span class="cmt"># Update project metadata  [Admin]</span>
+<span class="kw">DELETE</span> /api/projects/:id           <span class="cmt"># Delete + cascade all sub-projects/runs  [Admin]</span></code></pre>
+
+      <h3>Sub-Projects</h3>
+      <pre><code><span class="kw">GET</span>    /api/projects/:pid/subprojects           <span class="cmt"># List sub-projects</span>
+<span class="kw">POST</span>   /api/projects/:pid/subprojects           <span class="cmt"># Create { name, description? }  [Admin]</span>
+<span class="kw">GET</span>    /api/projects/:pid/subprojects/:id       <span class="cmt"># Get with counts + last run date</span>
+<span class="kw">PUT</span>    /api/projects/:pid/subprojects/:id       <span class="cmt"># Update  [Admin]</span>
+<span class="kw">DELETE</span> /api/projects/:pid/subprojects/:id      <span class="cmt"># Delete + cascade  [Admin]</span>
+<span class="kw">GET</span>    /api/projects/:pid/subprojects/:id/filters   <span class="cmt"># Get transaction filter list</span>
+<span class="kw">PUT</span>    /api/projects/:pid/subprojects/:id/filters   <span class="cmt"># Set { filters: string[] }</span></code></pre>
+
+      <h3>Test Runs</h3>
+      <pre><code><span class="kw">GET</span>    /api/subprojects/:spid/testruns      <span class="cmt"># List test runs</span>
+<span class="kw">POST</span>   /api/subprojects/:spid/testruns      <span class="cmt"># Upload (multipart/form-data + metadata)</span>
+<span class="kw">GET</span>    /api/testruns/:id                   <span class="cmt"># Get single test run</span>
+<span class="kw">PUT</span>    /api/testruns/:id                   <span class="cmt"># Update { name?, status?, notes?, build?, user_load? }</span>
+<span class="kw">DELETE</span> /api/testruns/:id                  <span class="cmt"># Delete run + uploaded file</span>
+<span class="kw">GET</span>    /api/testruns/:id/transactions      <span class="cmt"># Get all transactions for the run</span></code></pre>
+
+      <h3>Comparison</h3>
+      <pre><code><span class="kw">GET</span>  /api/comparison?baseline=<span class="str">&lt;id&gt;</span>&compare=<span class="str">&lt;id&gt;</span>
+
+<span class="cmt"># Response:</span>
+{
+  <span class="str">"baseline"</span>: { ...testRun },
+  <span class="str">"compare"</span>:  { ...testRun },
+  <span class="str">"transactionComparisons"</span>: [ ... ],
+  <span class="str">"insights"</span>: [ { severity, title, message } ],
+  <span class="str">"overallScore"</span>: <span class="num">87</span>,
+  <span class="str">"summary"</span>: {
+    <span class="str">"totalTransactions"</span>: <span class="num">24</span>, <span class="str">"regressions"</span>: <span class="num">2</span>,
+    <span class="str">"improvements"</span>: <span class="num">5</span>,     <span class="str">"neutral"</span>: <span class="num">15</span>,
+    <span class="str">"newTransactions"</span>: <span class="num">1</span>,   <span class="str">"missingTransactions"</span>: <span class="num">1</span>
+  }
+}</code></pre>
+
+      <h3>Trends &amp; Dashboard</h3>
+      <pre><code><span class="kw">GET</span>  /api/trends/:subprojectId                          <span class="cmt"># Overview + transaction names</span>
+<span class="kw">GET</span>  /api/trends/:subprojectId?transactionName=<span class="str">X</span>&filter=<span class="str">good</span> <span class="cmt"># Trend data for X</span>
+<span class="kw">GET</span>  /api/dashboard/stats                              <span class="cmt"># Stats + recent/all runs (access-filtered)</span>
+<span class="kw">GET</span>  /api/health                                       <span class="cmt"># Server health check (no auth)</span></code></pre>
+    </section>
+
+    <!-- ══ DEPLOYMENT ══ -->
+    <section id="deployment">
+      <h2><span class="emoji">🚢</span> Deployment Guide</h2>
+      <p>Choose a platform below. All guides produce a production-ready, HTTPS-capable deployment.</p>
+
+      <div class="deploy-tabs">
+        <div class="tab-buttons">
+          <button class="tab-btn active" onclick="switchTab(event,'docker')"><span class="tab-icon">🐳</span>Docker</button>
+          <button class="tab-btn" onclick="switchTab(event,'pm2')"><span class="tab-icon">🖥</span>PM2 / VPS</button>
+          <button class="tab-btn" onclick="switchTab(event,'ec2')"><span class="tab-icon">☁️</span>AWS EC2</button>
+          <button class="tab-btn" onclick="switchTab(event,'ecs')"><span class="tab-icon">🟠</span>AWS ECS</button>
+          <button class="tab-btn" onclick="switchTab(event,'azure')"><span class="tab-icon">🔷</span>Azure</button>
+          <button class="tab-btn" onclick="switchTab(event,'gcp')"><span class="tab-icon">🌐</span>GCP</button>
+          <button class="tab-btn" onclick="switchTab(event,'k8s')"><span class="tab-icon">⎈</span>Kubernetes</button>
+        </div>
+
+        <!-- Docker -->
+        <div class="tab-panel active" id="tab-docker">
+          <p><strong>Recommended for most teams.</strong> Two containers (backend + Nginx frontend) connected via Docker network, data persisted with named volumes.</p>
+          <h4>backend/Dockerfile</h4>
+          <pre><code><span class="kw">FROM</span> <span class="str">node:20-alpine</span> <span class="kw">AS</span> builder
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> package*.json ./
+<span class="kw">RUN</span> npm ci
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> npm run build
+
+<span class="kw">FROM</span> <span class="str">node:20-alpine</span>
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> --from=builder /app/dist ./dist
+<span class="kw">COPY</span> --from=builder /app/node_modules ./node_modules
+<span class="kw">COPY</span> --from=builder /app/package.json ./
+<span class="kw">RUN</span> mkdir -p /app/data /app/uploads
+<span class="kw">ENV</span> NODE_ENV=production
+<span class="kw">EXPOSE</span> 3001
+<span class="kw">CMD</span> [<span class="str">"node"</span>, <span class="str">"dist/index.js"</span>]</code></pre>
+          <h4>frontend/Dockerfile</h4>
+          <pre><code><span class="kw">FROM</span> <span class="str">node:20-alpine</span> <span class="kw">AS</span> builder
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> package*.json ./
+<span class="kw">RUN</span> npm ci
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> npm run build
+
+<span class="kw">FROM</span> <span class="str">nginx:alpine</span>
+<span class="kw">COPY</span> --from=builder /app/dist /usr/share/nginx/html
+<span class="kw">COPY</span> nginx.conf /etc/nginx/conf.d/default.conf
+<span class="kw">EXPOSE</span> 80</code></pre>
+          <h4>frontend/nginx.conf</h4>
+          <pre><code>server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    <span class="cmt"># SPA routing</span>
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    <span class="cmt"># API proxy to backend container</span>
+    location /api {
+        proxy_pass http://backend:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        client_max_body_size 50M;
+    }
+}</code></pre>
+          <h4>docker-compose.yml (project root)</h4>
+          <pre><code>version: <span class="str">"3.9"</span>
+
+services:
+  backend:
+    build: { context: ./backend, dockerfile: Dockerfile }
+    container_name: perfinsight-backend
+    restart: unless-stopped
+    environment:
+      PORT: <span class="num">3001</span>
+      DB_PATH: /app/data/perf_comparison.db
+      UPLOAD_DIR: /app/uploads
+      AUTH_USERNAME: <span class="str">${AUTH_USERNAME:-admin}</span>
+      AUTH_PASSWORD: <span class="str">${AUTH_PASSWORD:-admin123}</span>
+      JWT_SECRET: <span class="str">${JWT_SECRET:?JWT_SECRET must be set}</span>
+    volumes:
+      - perfinsight-db:/app/data
+      - perfinsight-uploads:/app/uploads
+    networks: [perfinsight-net]
+
+  frontend:
+    build: { context: ./frontend, dockerfile: Dockerfile }
+    container_name: perfinsight-frontend
+    restart: unless-stopped
+    ports: [<span class="str">"80:80"</span>]
+    depends_on: [backend]
+    networks: [perfinsight-net]
+
+volumes:
+  perfinsight-db:
+  perfinsight-uploads:
+
+networks:
+  perfinsight-net: { driver: bridge }</code></pre>
+          <h4>Deploy</h4>
+          <pre><code><span class="cmt"># Create .env at project root</span>
+echo <span class="str">"JWT_SECRET=$(openssl rand -hex 32)"</span> >> .env
+echo <span class="str">"AUTH_PASSWORD=YourSecurePassword"</span> >> .env
+
+<span class="cmt"># Build and start</span>
+docker compose up --build -d
+
+<span class="cmt"># View logs</span>
+docker compose logs -f
+
+<span class="cmt"># Stop</span>
+docker compose down</code></pre>
+        </div>
+
+        <!-- PM2 -->
+        <div class="tab-panel" id="tab-pm2">
+          <p>Run directly on Ubuntu/Debian with PM2 as the process manager and Nginx as the reverse proxy.</p>
+          <h4>1 — Install Node.js &amp; PM2</h4>
+          <pre><code>curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc && nvm install 20 && nvm use 20
+npm install -g pm2
+sudo apt update && sudo apt install -y nginx</code></pre>
+          <h4>2 — Clone, build, configure</h4>
+          <pre><code>cd /opt && git clone &lt;repo&gt; perfinsight && cd perfinsight
+npm run install:all && npm run build:backend && npm run build:frontend
+cp backend/.env.example backend/.env
+<span class="cmt"># Edit backend/.env with production values</span></code></pre>
+          <h4>3 — Start with PM2</h4>
+          <pre><code>cd /opt/perfinsight/backend
+pm2 start dist/index.js --name perfinsight-api
+pm2 save && pm2 startup   <span class="cmt"># follow the printed command to survive reboots</span></code></pre>
+          <h4>4 — Nginx config</h4>
+          <pre><code><span class="cmt"># /etc/nginx/sites-available/perfinsight</span>
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /opt/perfinsight/frontend/dist;
+    index index.html;
+
+    location / { try_files $uri $uri/ /index.html; }
+
+    location /api {
+        proxy_pass http://127.0.0.1:3001;
+        client_max_body_size 50M;
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+          <pre><code>sudo ln -s /etc/nginx/sites-available/perfinsight /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx</code></pre>
+          <h4>5 — Add HTTPS (optional, recommended)</h4>
+          <pre><code>sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com</code></pre>
+        </div>
+
+        <!-- EC2 -->
+        <div class="tab-panel" id="tab-ec2">
+          <p>Deploy on an AWS EC2 instance with Nginx fronting the Node.js backend.</p>
+          <h4>EC2 Instance Sizing</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Usage</th><th>Instance</th><th>Storage</th></tr></thead>
+              <tbody>
+                <tr><td>Small team (&lt;10 users)</td><td>t3.small</td><td>20 GB gp3</td></tr>
+                <tr><td>Medium team (10–50 users)</td><td>t3.medium</td><td>40 GB gp3</td></tr>
+                <tr><td>Large team (50+ users)</td><td>t3.large</td><td>80 GB gp3</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4>Security Group Inbound Rules</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Port</th><th>Protocol</th><th>Source</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>22</td><td>TCP</td><td>Your IP</td><td>SSH access</td></tr>
+                <tr><td>80</td><td>TCP</td><td>0.0.0.0/0</td><td>HTTP (redirects to HTTPS)</td></tr>
+                <tr><td>443</td><td>TCP</td><td>0.0.0.0/0</td><td>HTTPS</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4>Provision &amp; Deploy</h4>
+          <pre><code><span class="cmt"># SSH in and install Node.js</span>
+ssh -i your-key.pem ubuntu@&lt;EC2-IP&gt;
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs nginx
+sudo npm install -g pm2</code></pre>
+          <p>Then follow the <strong>PM2 / VPS</strong> steps (clone → build → configure → PM2 → Nginx).</p>
+          <h4>Persist uploads with EBS</h4>
+          <pre><code>sudo mkfs.ext4 /dev/xvdb
+sudo mkdir -p /opt/perfinsight/backend/uploads
+echo <span class="str">"/dev/xvdb /opt/perfinsight/backend/uploads ext4 defaults,nofail 0 2"</span> | sudo tee -a /etc/fstab
+sudo mount -a</code></pre>
+        </div>
+
+        <!-- ECS -->
+        <div class="tab-panel" id="tab-ecs">
+          <p>Fully managed containerized deployment on AWS ECS with Fargate — no servers to manage.</p>
+          <h4>1 — Push images to ECR</h4>
+          <pre><code>ACCOUNT=123456789012
+REGION=us-east-1
+
+aws ecr get-login-password --region $REGION | \
+  docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com
+
+<span class="cmt"># Create repos and push</span>
+for svc in backend frontend; do
+  aws ecr create-repository --repository-name perfinsight-$svc
+  docker build -t perfinsight-$svc ./$svc
+  docker tag perfinsight-$svc:latest $ACCOUNT.dkr.ecr.$REGION.amazonaws.com/perfinsight-$svc:latest
+  docker push $ACCOUNT.dkr.ecr.$REGION.amazonaws.com/perfinsight-$svc:latest
+done</code></pre>
+          <h4>2 — Store secrets in AWS Secrets Manager</h4>
+          <pre><code>aws secretsmanager create-secret --name perfinsight/jwt-secret \
+  --secret-string <span class="str">"$(openssl rand -hex 32)"</span>
+aws secretsmanager create-secret --name perfinsight/auth-password \
+  --secret-string <span class="str">"YourSecurePassword"</span></code></pre>
+          <h4>3 — Create EFS for SQLite persistence</h4>
+          <pre><code>EFS_ID=$(aws efs create-file-system --creation-token perfinsight-db \
+  --query FileSystemId --output text)
+aws efs create-mount-target --file-system-id $EFS_ID \
+  --subnet-id &lt;subnet-id&gt; --security-groups &lt;sg-id&gt;</code></pre>
+          <h4>4 — Register Task Definition and Deploy Service</h4>
+          <pre><code>aws ecs create-cluster --cluster-name perfinsight
+aws ecs register-task-definition --cli-input-json file://task-def.json
+aws ecs create-service \
+  --cluster perfinsight \
+  --service-name perfinsight \
+  --task-definition perfinsight:1 \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --load-balancers <span class="str">"targetGroupArn=&lt;arn&gt;,containerName=frontend,containerPort=80"</span></code></pre>
+          <div class="info-box">ℹ️ Keep <code>desired-count 1</code> for SQLite (single writer). For multi-instance, migrate to PostgreSQL.</div>
+        </div>
+
+        <!-- Azure -->
+        <div class="tab-panel" id="tab-azure">
+          <p>Deploy to Azure App Service (Linux) using the Azure CLI.</p>
+          <h4>1 — Create resources</h4>
+          <pre><code>RG=perfinsight-rg
+APP=perfinsight-app
+LOCATION=eastus
+
+az group create --name $RG --location $LOCATION
+az appservice plan create --name perfinsight-plan \
+  --resource-group $RG --sku B1 --is-linux
+az webapp create --name $APP --resource-group $RG \
+  --plan perfinsight-plan --runtime <span class="str">"NODE:20-lts"</span></code></pre>
+          <h4>2 — Configure app settings</h4>
+          <pre><code>az webapp config appsettings set --name $APP --resource-group $RG --settings \
+  PORT=<span class="num">8080</span> \
+  NODE_ENV=production \
+  JWT_SECRET=<span class="str">"$(openssl rand -hex 32)"</span> \
+  AUTH_PASSWORD=<span class="str">"YourSecurePassword"</span> \
+  DB_PATH=<span class="str">"/home/data/perf_comparison.db"</span> \
+  UPLOAD_DIR=<span class="str">"/home/uploads"</span></code></pre>
+          <h4>3 — Mount Azure Files for persistence</h4>
+          <pre><code>az webapp config storage-account add \
+  --name $APP --resource-group $RG \
+  --custom-id perfinsight-data \
+  --storage-type AzureFiles \
+  --account-name &lt;storage-account&gt; \
+  --share-name perfinsight-data \
+  --mount-path /home/data</code></pre>
+          <h4>4 — Deploy via ZIP</h4>
+          <pre><code>npm run build:backend && npm run build:frontend
+mkdir -p backend/public && cp -r frontend/dist/* backend/public/
+zip -r deploy.zip backend/dist backend/node_modules backend/public
+az webapp deploy --name $APP --resource-group $RG \
+  --src-path deploy.zip --type zip</code></pre>
+        </div>
+
+        <!-- GCP -->
+        <div class="tab-panel" id="tab-gcp">
+          <p>Deploy to Google Cloud Run — serverless, fully managed, pay-per-use.</p>
+          <h4>1 — Push images to Artifact Registry</h4>
+          <pre><code>PROJECT=$(gcloud config get-value project)
+REGION=us-central1
+REPO=$REGION-docker.pkg.dev/$PROJECT/perfinsight
+
+gcloud artifacts repositories create perfinsight \
+  --repository-format=docker --location=$REGION
+
+gcloud builds submit ./backend --tag $REPO/backend:latest
+gcloud builds submit ./frontend --tag $REPO/frontend:latest</code></pre>
+          <h4>2 — Store JWT secret</h4>
+          <pre><code>echo -n <span class="str">"$(openssl rand -hex 32)"</span> | \
+  gcloud secrets create jwt-secret --data-file=-</code></pre>
+          <h4>3 — Deploy backend</h4>
+          <pre><code>gcloud run deploy perfinsight-backend \
+  --image $REPO/backend:latest \
+  --region $REGION --allow-unauthenticated \
+  --set-env-vars PORT=<span class="num">8080</span>,DB_PATH=/mnt/data/perf.db \
+  --set-secrets JWT_SECRET=jwt-secret:latest \
+  --add-volume name=gcs,type=cloud-storage,bucket=perfinsight-data \
+  --add-volume-mount volume=gcs,mount-path=/mnt/data \
+  --min-instances 1</code></pre>
+          <h4>4 — Deploy frontend</h4>
+          <pre><code>gcloud run deploy perfinsight-frontend \
+  --image $REPO/frontend:latest \
+  --region $REGION --allow-unauthenticated \
+  --set-env-vars BACKEND_URL=https://perfinsight-backend-xxxx-uc.a.run.app</code></pre>
+          <div class="warn-box">⚠️ Use <code>--min-instances 1</code> on the backend to prevent cold starts and SQLite locking issues.</div>
+        </div>
+
+        <!-- Kubernetes -->
+        <div class="tab-panel" id="tab-k8s">
+          <p>Full Kubernetes deployment — works on EKS, AKS, GKE, or self-managed clusters.</p>
+          <h4>1 — Namespace, ConfigMap &amp; Secret</h4>
+          <pre><code><span class="cmt"># Apply namespace and config</span>
+kubectl create namespace perfinsight
+kubectl create configmap perfinsight-config -n perfinsight \
+  --from-literal=PORT=<span class="num">3001</span> \
+  --from-literal=NODE_ENV=production
+
+kubectl create secret generic perfinsight-secret -n perfinsight \
+  --from-literal=JWT_SECRET=<span class="str">"$(openssl rand -hex 32)"</span> \
+  --from-literal=AUTH_PASSWORD=<span class="str">"YourSecurePassword"</span></code></pre>
+          <h4>2 — PersistentVolumeClaim</h4>
+          <pre><code><span class="tag">apiVersion</span>: v1
+<span class="tag">kind</span>: PersistentVolumeClaim
+<span class="tag">metadata</span>:
+  <span class="tag">name</span>: perfinsight-data
+  <span class="tag">namespace</span>: perfinsight
+<span class="tag">spec</span>:
+  <span class="tag">accessModes</span>: [ReadWriteOnce]
+  <span class="tag">resources</span>:
+    <span class="tag">requests</span>:
+      <span class="tag">storage</span>: 5Gi</code></pre>
+          <h4>3 — Backend Deployment (replicas: 1 for SQLite)</h4>
+          <pre><code><span class="tag">apiVersion</span>: apps/v1
+<span class="tag">kind</span>: Deployment
+<span class="tag">metadata</span>:
+  <span class="tag">name</span>: perfinsight-backend
+  <span class="tag">namespace</span>: perfinsight
+<span class="tag">spec</span>:
+  <span class="tag">replicas</span>: 1
+  <span class="tag">selector</span>:
+    <span class="tag">matchLabels</span>: { app: perfinsight-backend }
+  <span class="tag">template</span>:
+    <span class="tag">spec</span>:
+      <span class="tag">containers</span>:
+        - <span class="tag">name</span>: backend
+          <span class="tag">image</span>: your-registry/perfinsight-backend:latest
+          <span class="tag">ports</span>: [{ <span class="tag">containerPort</span>: 3001 }]
+          <span class="tag">envFrom</span>: [{ <span class="tag">configMapRef</span>: { <span class="tag">name</span>: perfinsight-config } }]
+          <span class="tag">env</span>:
+            - { <span class="tag">name</span>: JWT_SECRET, <span class="tag">valueFrom</span>: { <span class="tag">secretKeyRef</span>: { <span class="tag">name</span>: perfinsight-secret, <span class="tag">key</span>: JWT_SECRET } } }
+          <span class="tag">volumeMounts</span>:
+            - { <span class="tag">name</span>: data, <span class="tag">mountPath</span>: /mnt/data }
+          <span class="tag">resources</span>:
+            <span class="tag">requests</span>: { memory: 256Mi, cpu: 250m }
+            <span class="tag">limits</span>:  { memory: 512Mi, cpu: 500m }
+      <span class="tag">volumes</span>:
+        - <span class="tag">name</span>: data
+          <span class="tag">persistentVolumeClaim</span>: { <span class="tag">claimName</span>: perfinsight-data }</code></pre>
+          <h4>4 — Ingress with TLS</h4>
+          <pre><code><span class="tag">apiVersion</span>: networking.k8s.io/v1
+<span class="tag">kind</span>: Ingress
+<span class="tag">metadata</span>:
+  <span class="tag">name</span>: perfinsight
+  <span class="tag">annotations</span>:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+<span class="tag">spec</span>:
+  <span class="tag">tls</span>: [{ <span class="tag">hosts</span>: [perfinsight.your-domain.com], <span class="tag">secretName</span>: perfinsight-tls }]
+  <span class="tag">rules</span>:
+    - <span class="tag">host</span>: perfinsight.your-domain.com
+      <span class="tag">http</span>:
+        <span class="tag">paths</span>:
+          - { <span class="tag">path</span>: /api, <span class="tag">pathType</span>: Prefix, <span class="tag">backend</span>: { <span class="tag">service</span>: { <span class="tag">name</span>: perfinsight-backend-svc, <span class="tag">port</span>: { <span class="tag">number</span>: 3001 } } } }
+          - { <span class="tag">path</span>: /,    <span class="tag">pathType</span>: Prefix, <span class="tag">backend</span>: { <span class="tag">service</span>: { <span class="tag">name</span>: perfinsight-frontend-svc, <span class="tag">port</span>: { <span class="tag">number</span>: 80 } } } }</code></pre>
+          <pre><code>kubectl apply -f k8s/
+kubectl rollout status deployment/perfinsight-backend -n perfinsight
+kubectl rollout status deployment/perfinsight-frontend -n perfinsight</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECURITY ══ -->
+    <section id="security">
+      <h2><span class="emoji">🔒</span> Security Hardening for Production</h2>
+      <ul class="checklist">
+        <li><span class="check-icon">✅</span><div><span class="check-label">Change JWT_SECRET</span><span class="check-how">— Set a random 64-char string via <code>openssl rand -hex 32</code> in your .env or Secret Manager</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Change default admin password</span><span class="check-how">— Update in .env or via the Admin UI after first login</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Enable HTTPS</span><span class="check-how">— Let's Encrypt (Certbot) or your cloud provider's certificate service</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Set NODE_ENV=production</span><span class="check-how">— Disables stack traces in error responses, enables Express optimizations</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Rate-limit /api/auth/login</span><span class="check-how">— Add <code>express-rate-limit</code> middleware: 10 attempts per minute per IP</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Restrict CORS origins</span><span class="check-how">— Replace wildcard in index.ts with your actual domain (e.g. <code>https://perfinsight.company.com</code>)</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">File upload size limit</span><span class="check-how">— Review Multer config and set <code>fileSize</code> limit (e.g. 50 MB)</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Backup the SQLite database</span><span class="check-how">— Schedule a daily cron to copy <code>perf_comparison.db</code> to S3 / Azure Blob / GCS</span></div></li>
+        <li><span class="check-icon">✅</span><div><span class="check-label">Keep dependencies updated</span><span class="check-how">— Run <code>npm audit</code> regularly and apply patches for known vulnerabilities</span></div></li>
+      </ul>
+      <h3>Backup Cron (VPS / EC2)</h3>
+      <pre><code><span class="cmt"># /etc/cron.daily/perfinsight-backup</span>
+<span class="kw">#!/bin/bash</span>
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+cp /opt/perfinsight/backend/data/perf_comparison.db \
+   /opt/backups/perf_comparison_${TIMESTAMP}.db
+<span class="cmt"># Keep only last 7 backups</span>
+ls -t /opt/backups/perf_comparison_*.db | tail -n +8 | xargs -r rm</code></pre>
+    </section>
+
+    <!-- ══ DATABASE SCHEMA ══ -->
+    <section id="schema">
+      <h2><span class="emoji">🗄</span> Database Schema</h2>
+      <div class="schema-grid">
+        <div class="schema-table">
+          <div class="schema-header">users</div>
+          <div class="schema-field"><span class="field-name field-pk">id</span><span class="field-type">INTEGER PK</span></div>
+          <div class="schema-field"><span class="field-name">username</span><span class="field-type">TEXT UNIQUE<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">password_hash</span><span class="field-type">TEXT (scrypt)<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">role</span><span class="field-type">'admin'|'user'<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TEXT (datetime)</span></div>
+        </div>
+        <div class="schema-table">
+          <div class="schema-header">user_project_access</div>
+          <div class="schema-field"><span class="field-name field-fk">user_id</span><span class="field-type">FK → users<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name field-fk">project_id</span><span class="field-type">FK → projects<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name" style="font-size:.7rem;color:var(--slate-400);">PRIMARY KEY (user_id, project_id)</span><span></span></div>
+        </div>
+        <div class="schema-table">
+          <div class="schema-header">projects</div>
+          <div class="schema-field"><span class="field-name field-pk">id</span><span class="field-type">INTEGER PK</span></div>
+          <div class="schema-field"><span class="field-name">name</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">customer_name</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">description</span><span class="field-type">TEXT</span></div>
+          <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TEXT</span></div>
+        </div>
+        <div class="schema-table">
+          <div class="schema-header">sub_projects</div>
+          <div class="schema-field"><span class="field-name field-pk">id</span><span class="field-type">INTEGER PK</span></div>
+          <div class="schema-field"><span class="field-name field-fk">project_id</span><span class="field-type">FK → projects<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">name</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">description</span><span class="field-type">TEXT</span></div>
+          <div class="schema-field"><span class="field-name">transaction_filters</span><span class="field-type">TEXT (JSON[])</span></div>
+        </div>
+        <div class="schema-table">
+          <div class="schema-header">test_runs</div>
+          <div class="schema-field"><span class="field-name field-pk">id</span><span class="field-type">INTEGER PK</span></div>
+          <div class="schema-field"><span class="field-name field-fk">sub_project_id</span><span class="field-type">FK → sub_projects<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">name</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">build / user_load</span><span class="field-type">TEXT / INTEGER</span></div>
+          <div class="schema-field"><span class="field-name">test_tool</span><span class="field-type">TEXT DEFAULT 'Custom'</span></div>
+          <div class="schema-field"><span class="field-name">execution_date</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">status</span><span class="field-type">'pending'|'good'|'bad'</span></div>
+          <div class="schema-field"><span class="field-name">notes / file_path</span><span class="field-type">TEXT</span></div>
+        </div>
+        <div class="schema-table">
+          <div class="schema-header">transactions</div>
+          <div class="schema-field"><span class="field-name field-pk">id</span><span class="field-type">INTEGER PK</span></div>
+          <div class="schema-field"><span class="field-name field-fk">test_run_id</span><span class="field-type">FK → test_runs<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">name</span><span class="field-type">TEXT<span class="field-req">*</span></span></div>
+          <div class="schema-field"><span class="field-name">samples</span><span class="field-type">INTEGER</span></div>
+          <div class="schema-field"><span class="field-name">avg / min / max</span><span class="field-type">REAL (seconds)</span></div>
+          <div class="schema-field"><span class="field-name">p90 / p95 / p99</span><span class="field-type">REAL (seconds)</span></div>
+          <div class="schema-field"><span class="field-name">error_rate</span><span class="field-type">REAL (%)</span></div>
+          <div class="schema-field"><span class="field-name">throughput / kb_per_sec</span><span class="field-type">REAL</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TROUBLESHOOT ══ -->
+    <section id="troubleshoot">
+      <h2><span class="emoji">🐛</span> Troubleshooting</h2>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> Backend fails to start on the configured port</div>
+        <div class="trouble-ans">
+          <pre><code><span class="cmt"># Check for port conflicts</span>
+lsof -i :6001
+
+<span class="cmt"># Verify the data directory exists and is writable</span>
+ls -la backend/data/
+
+<span class="cmt"># View PM2 logs</span>
+pm2 logs perfinsight-api</code></pre>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> "Invalid or expired token" immediately after server restart</div>
+        <div class="trouble-ans">
+          <p>JWT tokens are signed with <code>JWT_SECRET</code>. If the server restarts with a different secret (e.g. the random default), all existing tokens are invalidated. Set a <strong>fixed</strong> <code>JWT_SECRET</code> value in <code>.env</code> that doesn't change between restarts.</p>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> File uploads silently fail or show 413 error</div>
+        <div class="trouble-ans">
+          <pre><code><span class="cmt"># Ensure uploads directory exists and is writable</span>
+mkdir -p backend/uploads && chmod 755 backend/uploads
+
+<span class="cmt"># Add to Nginx server block to increase body limit:</span>
+client_max_body_size 50M;</code></pre>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> SQLite "database is locked" error in production</div>
+        <div class="trouble-ans">
+          <p>SQLite supports only one writer at a time. In containerized or multi-process deployments, ensure <strong>only one backend process</strong> is running. WAL mode (already enabled) helps, but concurrent writes from multiple processes will still fail. If you need horizontal scaling, migrate to PostgreSQL using <code>pg</code> + <code>knex</code> or <code>Prisma</code>.</p>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> Frontend shows blank page after Nginx/static deploy</div>
+        <div class="trouble-ans">
+          <p>The React SPA uses client-side routing. Without <code>try_files $uri $uri/ /index.html;</code> in your Nginx config, any URL other than <code>/</code> will return a 404 on page refresh. Ensure this directive is in your <code>location /</code> block.</p>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> Docker containers can't reach each other / API calls fail</div>
+        <div class="trouble-ans">
+          <p>Both containers must be on the <strong>same Docker network</strong> (defined in <code>docker-compose.yml</code>). The Nginx config inside the frontend container must proxy using the backend's service name: <code>proxy_pass http://backend:3001;</code> — not <code>localhost</code>.</p>
+        </div>
+      </div>
+
+      <div class="trouble-item" onclick="toggleTrouble(this)">
+        <div class="trouble-q"><span class="arrow">▶</span> Regular user can still see all projects</div>
+        <div class="trouble-ans">
+          <p>The user's JWT token contains their role. If you changed a user's role in the database without them re-logging in, they still have an old token with the old role embedded. Ask the user to log out and log back in — the new token will reflect their updated role and project access.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+  </div><!-- /content -->
+
+  <!-- Footer -->
+  <footer class="page-footer">
+    <div style="font-size:1.5rem;margin-bottom:.5rem;">📊</div>
+    <div>Built with ❤️ by the <strong>Performance Testing COE</strong></div>
+    <div style="margin-top:.4rem;color:var(--slate-500);">PerfInsight v1.0.0 · Making Performance Testing Analysis Effortless</div>
+  </footer>
+
+</div><!-- /main -->
+
+<script>
+  /* ── Tab switching ── */
+  function switchTab(e, id) {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const panels  = document.querySelectorAll('.tab-panel');
+    buttons.forEach(b => b.classList.remove('active'));
+    panels.forEach(p  => p.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+  }
+
+  /* ── Accordion troubleshoot ── */
+  function toggleTrouble(el) {
+    el.classList.toggle('open');
+  }
+
+  /* ── Sidebar active link ── */
+  const navLinks = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('section[id]');
+
+  function setActive() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 120) current = s.id;
+    });
+    navLinks.forEach(l => {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+  }
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+
+  /* ── Mobile menu ── */
+  function toggleMenu() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+  }
+</script>
+</body>
+</html>
