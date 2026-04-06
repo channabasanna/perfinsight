@@ -1,14 +1,3 @@
-<![CDATA[<div align="center">
-
-```
-██████╗ ███████╗██████╗ ███████╗██╗███╗   ██╗███████╗██╗ ██████╗ ██╗  ██╗████████╗
-██╔══██╗██╔════╝██╔══██╗██╔════╝██║████╗  ██║██╔════╝██║██╔════╝ ██║  ██║╚══██╔══╝
-██████╔╝█████╗  ██████╔╝█████╗  ██║██╔██╗ ██║███████╗██║██║  ███╗███████║   ██║
-██╔═══╝ ██╔══╝  ██╔══██╗██╔══╝  ██║██║╚██╗██║╚════██║██║██║   ██║██╔══██║   ██║
-██║     ███████╗██║  ██║██║     ██║██║ ╚████║███████║██║╚██████╔╝██║  ██║   ██║
-╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝
-```
-
 ### **Performance Test Results Comparison Platform**
 
 *Analyze. Compare. Optimize.*
@@ -1627,4 +1616,3 @@ kubectl create secret generic perfinsight-secrets \
 
 - At least one test run must be uploaded for the sub-project.
 - If a transaction filter is active, the dropdown shows only filtered transactions. Clear the filter or add more transactions.
-]]>
