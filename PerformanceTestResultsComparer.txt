@@ -1,0 +1,1424 @@
+================================================================================
+  REPLIT BUILD PROMPT — PerfInsight: Performance Test Results Comparison Platform
+================================================================================
+
+Build a full-stack web application called **PerfInsight** for Performance Testing
+Centers of Excellence (COE). The application allows teams to upload, organize,
+compare, and trend-analyze performance test results from load-testing tools such
+as JMeter, Gatling, K6, and Locust.
+
+Read this prompt in its entirety before writing any code. Follow every section
+exactly. Do not omit any feature.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — PROJECT STRUCTURE & TECH STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a monorepo with the following layout:
+
+  /
+  ├── package.json              (root workspace)
+  ├── backend/
+  │   ├── package.json
+  │   ├── tsconfig.json
+  │   ├── .env.example
+  │   ├── data/                 (auto-created, holds SQLite DB)
+  │   ├── uploads/              (auto-created, holds uploaded files)
+  │   └── src/
+  │       ├── index.ts
+  │       ├── database.ts
+  │       ├── middleware/
+  │       │   ├── auth.ts
+  │       │   └── upload.ts
+  │       ├── routes/
+  │       │   ├── auth.ts
+  │       │   ├── projects.ts
+  │       │   ├── subprojects.ts
+  │       │   ├── testruns.ts
+  │       │   ├── comparison.ts
+  │       │   └── trends.ts
+  │       └── utils/
+  │           ├── fileParser.ts
+  │           └── comparisonEngine.ts
+  └── frontend/
+      ├── package.json
+      ├── vite.config.ts
+      ├── tailwind.config.js
+      ├── postcss.config.js
+      ├── index.html
+      └── src/
+          ├── main.tsx
+          ├── App.tsx
+          ├── index.css
+          ├── types/
+          │   └── index.ts
+          ├── contexts/
+          │   └── AuthContext.tsx
+          ├── api/
+          │   ├── client.ts
+          │   ├── projects.ts
+          │   ├── testruns.ts
+          │   ├── comparison.ts
+          │   └── users.ts
+          ├── pages/
+          │   ├── Login.tsx
+          │   ├── Dashboard.tsx
+          │   ├── Projects.tsx
+          │   ├── ProjectDetail.tsx
+          │   ├── SubProjectDetail.tsx
+          │   ├── Upload.tsx
+          │   ├── Comparison.tsx
+          │   ├── Trends.tsx
+          │   └── Admin.tsx
+          ├── components/
+          │   ├── Layout.tsx
+          │   ├── Sidebar.tsx
+          │   ├── ComparisonTable.tsx
+          │   ├── InsightCard.tsx
+          │   └── charts/
+          │       ├── ResponseTimeChart.tsx
+          │       ├── ThroughputChart.tsx
+          │       ├── ErrorRateChart.tsx
+          │       └── TrendChart.tsx
+          └── utils/
+              └── generateComparisonPDF.ts
+
+────────────────────────────────────────────────────────────────────────────────
+Root package.json scripts:
+────────────────────────────────────────────────────────────────────────────────
+{
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend":  "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend":  "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build"
+  }
+}
+
+────────────────────────────────────────────────────────────────────────────────
+Backend dependencies (backend/package.json):
+────────────────────────────────────────────────────────────────────────────────
+dependencies:
+  express ^4.18.2
+  cors ^2.8.5
+  dotenv ^16.4.1
+  jsonwebtoken ^9.0.2
+  better-sqlite3 ^9.4.3
+  multer ^1.4.5-lts.1
+  xlsx ^0.18.5
+
+devDependencies:
+  typescript ^5.3.3
+  ts-node ^10.9.2
+  nodemon ^3.0.3
+  @types/express @types/cors @types/jsonwebtoken @types/multer @types/better-sqlite3 @types/node
+
+Scripts:
+  "dev": "nodemon --exec ts-node src/index.ts"
+  "build": "tsc"
+  "start": "node dist/index.js"
+
+backend/tsconfig.json:
+  target: ES2020, module: commonjs, outDir: dist, rootDir: src,
+  esModuleInterop: true, strict: true, resolveJsonModule: true
+
+────────────────────────────────────────────────────────────────────────────────
+Frontend dependencies (frontend/package.json):
+────────────────────────────────────────────────────────────────────────────────
+dependencies:
+  react ^18.2.0
+  react-dom ^18.2.0
+  react-router-dom ^6.22.0
+  axios ^1.6.7
+  recharts ^2.12.0
+  jspdf ^2.5.1
+  jspdf-autotable ^3.8.2
+  react-dropzone ^14.2.3
+  date-fns ^3.3.1
+  clsx ^2.1.0
+  @heroicons/react ^2.1.1
+  xlsx ^0.20.1
+
+devDependencies:
+  vite ^5.1.0
+  @vitejs/plugin-react ^4.2.1
+  typescript ^5.3.3
+  tailwindcss ^3.4.1
+  postcss ^8.4.35
+  autoprefixer ^10.4.17
+  @types/react @types/react-dom
+
+Scripts:
+  "dev": "vite"
+  "build": "tsc && vite build"
+  "preview": "vite preview"
+
+frontend/vite.config.ts — proxy /api to backend port:
+  server: { port: 5173, proxy: { '/api': { target: 'http://localhost:6001', changeOrigin: true } } }
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — BACKEND: DATABASE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: backend/src/database.ts
+
+Use better-sqlite3. Enable WAL mode and foreign keys:
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+Create these tables with CREATE TABLE IF NOT EXISTS:
+
+1. projects
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   name TEXT NOT NULL
+   customer_name TEXT NOT NULL
+   description TEXT
+   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+
+2. sub_projects
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE
+   name TEXT NOT NULL
+   description TEXT
+   transaction_filters TEXT   ← stores JSON array of transaction name strings
+   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+
+3. test_runs
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   sub_project_id INTEGER NOT NULL REFERENCES sub_projects(id) ON DELETE CASCADE
+   name TEXT NOT NULL
+   build TEXT
+   user_load INTEGER
+   test_tool TEXT NOT NULL DEFAULT 'Custom'
+   execution_date TEXT NOT NULL
+   status TEXT NOT NULL DEFAULT 'pending'   ← 'pending' | 'good' | 'bad' | 'under_review'
+   notes TEXT
+   file_path TEXT
+   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+
+4. transactions
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   test_run_id INTEGER NOT NULL REFERENCES test_runs(id) ON DELETE CASCADE
+   name TEXT NOT NULL
+   samples INTEGER DEFAULT 0
+   avg_response_time REAL DEFAULT 0
+   min_response_time REAL DEFAULT 0
+   max_response_time REAL DEFAULT 0
+   p90_response_time REAL DEFAULT 0
+   p95_response_time REAL DEFAULT 0
+   p99_response_time REAL DEFAULT 0
+   error_rate REAL DEFAULT 0
+   throughput REAL DEFAULT 0
+   kb_per_sec REAL DEFAULT 0
+
+5. users
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   username TEXT NOT NULL UNIQUE
+   password_hash TEXT NOT NULL
+   role TEXT NOT NULL DEFAULT 'user'   ← 'admin' | 'user'
+   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+
+6. user_project_access
+   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE
+   PRIMARY KEY (user_id, project_id)
+
+Password hashing — use Node crypto scrypt:
+  hashPassword(password): salt = randomBytes(16).hex(); hash = scryptSync(password, salt, 64).hex(); return `${salt}:${hash}`
+  verifyPassword(password, stored): split on ':', scryptSync the input, timingSafeEqual to compare buffers
+
+On startup, seed one admin user from env vars AUTH_USERNAME / AUTH_PASSWORD if the users table is empty.
+
+Export the db instance and the initializeDatabase(), hashPassword(), verifyPassword() functions.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — BACKEND: MIDDLEWARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+backend/src/middleware/auth.ts
+  requireAuth: Extract Bearer token from Authorization header. Verify with
+    jsonwebtoken using JWT_SECRET env var (default: 'perf-insight-secret-change-me').
+    Attach decoded payload as req.user = { id, username, role }.
+    Return 401 if missing or invalid.
+
+  requireAdmin: Check req.user.role === 'admin'. Return 403 if not.
+
+backend/src/middleware/upload.ts
+  Use multer diskStorage. Save to UPLOAD_DIR env var (default: './uploads').
+  Filename: `${fieldname}-${Date.now()}-${Math.round(Math.random()*1e9)}${ext}`
+  Filter: accept .csv, .xlsx, .xls only.
+  Limits: fileSize 50MB.
+  Export: upload (multer instance) and the single() method.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — BACKEND: FILE PARSER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+backend/src/utils/fileParser.ts
+
+Export function parseTestResultFile(filePath: string): ParsedTransaction[]
+
+Interface ParsedTransaction:
+  name, samples, avg_response_time, min_response_time, max_response_time,
+  p90_response_time, p95_response_time, p99_response_time,
+  error_rate, throughput, kb_per_sec  (all number)
+
+Logic:
+1. Read file with XLSX.readFile (raw: false for CSV, default for xlsx).
+2. Get first sheet, convert to JSON with XLSX.utils.sheet_to_json (defval: '').
+3. Normalize column names: lowercase, trim, remove non-alphanumeric chars.
+4. Detect columns by flexible matching (case-insensitive, partial match):
+   - Label column: 'label', 'transaction', 'name', 'sampler'
+   - Samples: '# samples', 'samples', 'count', 'hits'
+   - Average RT: 'average', 'avg', 'mean', 'avgresponsetime', 'responsetime'
+   - Min: 'min', 'minimum'
+   - Max: 'max', 'maximum'
+   - P90: '90th pct', '90%', 'p90', 'pct90', '90thpct', '90th'
+   - P95: '95th pct', '95%', 'p95', 'pct95', '95thpct', '95th'
+   - P99: '99th pct', '99%', 'p99', 'pct99', '99thpct', '99th'
+   - Error rate: 'error%', 'error %', 'errors', 'errorrate', 'errorpct', 'failures', 'failurerate'
+   - Throughput: 'throughput', 'rps', 'req/s', 'requestspersecond'
+   - KB/sec: 'received kb/sec', 'kb/sec', 'kbps', 'kbsec', 'kbpersec'
+5. Throw if no label column found.
+6. Auto-detect ms-to-seconds conversion: if >50% of avg RT values are >100,
+   divide all RT columns by 1000.
+7. For each row:
+   - Skip rows where name is empty or equals 'total' (case-insensitive).
+   - Parse all numeric values with parseFloat, stripping commas/percent signs.
+   - Error rate: if value is between 0 and 1 (exclusive), multiply by 100.
+   - Push ParsedTransaction.
+8. Throw if no valid transactions found.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — BACKEND: COMPARISON ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+backend/src/utils/comparisonEngine.ts
+
+Export function runComparison(baseline: TransactionRow[], compare: TransactionRow[]): ComparisonEngineResult
+
+Interfaces:
+  TransactionRow: id, test_run_id, name, samples, avg_response_time,
+    min/max/p90/p95/p99_response_time, error_rate, throughput, kb_per_sec
+
+  TransactionComparison: name, baseline (TransactionRow|null),
+    compare (TransactionRow|null),
+    diffs: { avg_response_time, p90_response_time, p99_response_time, throughput, error_rate } (number|null each),
+    statuses: { avg_response_time, p90_response_time, throughput, error_rate }
+      each: 'regression'|'improvement'|'neutral'|'new'|'missing'
+    overallStatus: 'regression'|'improvement'|'neutral'|'new'|'missing'
+
+  Insight: severity ('critical'|'warning'|'info'|'success'),
+    title, message, transactionName?, metric?, diff?
+
+  ComparisonEngineResult: transactionComparisons[], insights[], overallScore (0-100),
+    summary: { totalTransactions, regressions, improvements, neutral, newTransactions, missingTransactions }
+
+Diff formula:
+  pctDiff(baseline, compare) = ((compare - baseline) / baseline) * 100
+  If baseline === 0 and compare === 0, return 0. If baseline === 0, return null.
+
+Status thresholds:
+  Response time (avg, p90, p99): regression if diff > 10%; improvement if diff < -10%
+  Throughput: regression if diff < -10%; improvement if diff > 10%
+  Error rate: uses ABSOLUTE difference (compare.error_rate - baseline.error_rate).
+    regression if absolute diff > 5; improvement if absolute diff < -5.
+    (Note: error_rate diff stored in diffs uses percentage diff, but status uses absolute)
+
+Overall status per transaction:
+  - 'regression' if ANY of avg/p90/throughput/error_rate is regression
+  - 'improvement' if NO regression AND at least 2 metrics are improvement
+  - otherwise 'neutral'
+
+Scoring (scoreDeduction accumulates, final = max(0, min(100, 100 - deduction))):
+  Avg RT regression >50%: -10 pts; >25%: -5 pts; >10%: -2 pts
+  P90 regression >50%: -8 pts; >10%: -3 pts
+  Throughput regression: -5 pts per transaction
+  Error rate regression (absolute): -8 pts per transaction
+
+Insights generated per transaction:
+  - Avg RT regression → severity: critical (>50%), warning (>25%), info (>10%)
+    title: 'Response Time Regression'
+    message: '"<name>" avg response time increased by X% (Xs → Xs)'
+  - P90 regression → severity: critical (>50%), warning (>10%)
+    title: 'P90 Regression'
+  - Throughput regression → severity: warning
+    title: 'Throughput Regression'
+  - Error rate regression → severity: critical
+    title: 'Error Rate Increase'
+    message: shows absolute error rate change
+  - Avg RT improvement → severity: success, title: 'Response Time Improvement'
+  - Throughput improvement → severity: success, title: 'Throughput Improvement'
+  - New transaction (in compare, not in baseline) → severity: info, title: 'New Transaction'
+  - Missing transaction (in baseline, not in compare) → severity: warning, title: 'Missing Transaction'
+
+Sort transactionComparisons: regression(0), missing(1), improvement(2), neutral(3), new(4)
+Sort insights: critical(0), warning(1), info(2), success(3)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — BACKEND: API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All responses use: { success: true, data: ... } on success
+                   { success: false, error: '...' } on error
+
+backend/src/routes/auth.ts
+  POST /login — no auth required
+    Body: { username, password }
+    Look up user by username. Verify password with verifyPassword().
+    Sign JWT: jwt.sign({ id, username, role }, JWT_SECRET, { expiresIn: '8h' })
+    Return: { token, username, role }
+
+  GET /me — requireAuth
+    Return: { id, username, role }
+
+  GET /users — requireAuth + requireAdmin
+    Return all users. For each, also query user_project_access to return project_ids array.
+
+  POST /users — requireAuth + requireAdmin
+    Body: { username, password, role, project_ids: number[] }
+    Hash password, insert user, insert project access rows.
+
+  PUT /users/:id — requireAuth + requireAdmin
+    Body: { password?, role?, project_ids?: number[] }
+    Prevent: demoting if this is the last admin, or changing your own role.
+    Update password_hash if password provided.
+    Update role if provided (check last-admin protection).
+    Replace all project access rows if project_ids provided (delete then insert).
+
+  DELETE /users/:id — requireAuth + requireAdmin
+    Prevent deleting the last admin or yourself.
+
+backend/src/routes/projects.ts
+  GET / — requireAuth
+    Admins: return all projects with counts (subproject count, test_run count).
+    Users: join user_project_access to return only allocated projects.
+
+  POST / — requireAuth + requireAdmin
+    Body: { name, customer_name, description? }
+
+  GET /:id — requireAuth (check access for non-admins)
+    Return project with subproject_count, test_run_count.
+
+  PUT /:id — requireAuth + requireAdmin
+    Body: { name?, customer_name?, description? }
+
+  DELETE /:id — requireAuth + requireAdmin
+    Cascades due to FK constraints.
+
+backend/src/routes/subprojects.ts
+  All routes prefixed with /api/projects/:projectId/subprojects
+  requireAuth on all. Admin-only for POST, PUT, DELETE.
+
+  GET / — list subprojects for a project with test_run_count, good_run_count, last_run_date
+
+  POST / — create: { name, description? }
+
+  GET /:id — single subproject with counts
+
+  PUT /:id — update: { name?, description? }
+
+  DELETE /:id
+
+  GET /:id/filters
+    Parse transaction_filters JSON column, return array of strings (or []).
+
+  PUT /:id/filters
+    Body: { filters: string[] }
+    Store as JSON string in transaction_filters column.
+
+backend/src/routes/testruns.ts
+  GET /api/subprojects/:subprojectId/testruns
+    List all test runs for a subproject, ordered by execution_date DESC.
+    Include transaction_count per run.
+
+  POST /api/subprojects/:subprojectId/testruns — requireAuth, multer upload
+    FormData fields: file, name, build, user_load, test_tool, execution_date, notes, status
+    1. Parse file with parseTestResultFile(req.file.path)
+    2. Insert test_run row
+    3. Insert all transactions rows
+    Return the created test run with transaction_count.
+
+  GET /api/testruns/:id — requireAuth
+    Return single test run.
+
+  PUT /api/testruns/:id — requireAuth
+    Body: { name?, build?, user_load?, test_tool?, execution_date?, status?, notes? }
+    Update only provided fields.
+
+  DELETE /api/testruns/:id — requireAuth
+    Delete test run (cascades transactions). Also delete the file from disk if file_path exists.
+
+  GET /api/testruns/:id/transactions — requireAuth
+    Return all transactions for a test run, ordered by name.
+
+backend/src/routes/comparison.ts
+  GET /api/comparison?baseline=:id&compare=:id — requireAuth
+    1. Fetch both test runs. Verify they belong to the same sub_project_id.
+    2. Fetch all transactions for both runs.
+    3. Get subproject's transaction_filters (parse JSON). If filters array is non-empty,
+       filter both transaction arrays to only include names in the filters list.
+    4. Call runComparison(baselineTransactions, compareTransactions).
+    5. Return: { baseline: testRun, compare: testRun, transactionComparisons, insights, overallScore, summary }
+
+backend/src/routes/trends.ts
+  GET /api/trends/:subprojectId?transactionName=X&filter=good — requireAuth
+
+  If no transactionName:
+    Return overview:
+      transactionNames: distinct transaction names across all runs in the subproject (ordered alphabetically)
+      testRunSummary: array of { id, name, build, user_load, execution_date, status } for all runs
+
+  If transactionName provided:
+    Query transactions joined to test_runs for this subproject and transactionName.
+    If filter=good, only include runs where test_runs.status = 'good'.
+    Order by execution_date ASC.
+    Return TrendDataPoint[]: each has test_run_id, test_run_name, build, user_load,
+      execution_date, transaction_name, avg_response_time, p90_response_time,
+      p95_response_time, p99_response_time, throughput, error_rate, samples, kb_per_sec
+
+backend/src/index.ts
+  Import express, cors, dotenv.
+  Use CORS allowing origins: http://localhost:5173, http://localhost:3000, http://127.0.0.1:5173.
+  Mount routes:
+    /api/auth    → auth router
+    /api/projects → projects router
+    /api/projects/:projectId/subprojects → subprojects router  (use mergeParams: true)
+    /api/subprojects/:subprojectId/testruns → testruns router
+    /api/testruns → testruns router
+    /api/comparison → comparison router
+    /api/trends → trends router
+
+  GET /api/health → { status: 'ok', timestamp }
+
+  GET /api/dashboard/stats — requireAuth
+    Return:
+      totalProjects (access-filtered for non-admins)
+      totalTestRuns (access-filtered)
+      goodTests (count where status='good', access-filtered)
+      badTests (count where status='bad', access-filtered)
+      recentTestRuns: last 50 runs with project_name, customer_name, subproject_name
+        (access-filtered)
+      allTestRuns: all runs with project_name, subproject_name
+        (access-filtered, for comparison selectors)
+
+  Call initializeDatabase() on startup.
+  Listen on PORT env var (default 6001).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — FRONTEND: TYPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/types/index.ts — export all these interfaces:
+
+export interface Project {
+  id: number; name: string; customer_name: string; description?: string;
+  created_at?: string; subproject_count?: number; test_run_count?: number;
+}
+
+export interface SubProject {
+  id: number; project_id: number; name: string; description?: string;
+  created_at?: string; test_run_count?: number; good_run_count?: number;
+  last_run_date?: string;
+}
+
+export interface TestRun {
+  id: number; sub_project_id: number; name: string; build?: string;
+  user_load?: number; test_tool: string; execution_date: string;
+  status: 'pending' | 'good' | 'bad' | 'under_review'; notes?: string;
+  file_path?: string; created_at?: string; transaction_count?: number;
+  subproject_name?: string; project_name?: string; customer_name?: string;
+}
+
+export interface Transaction {
+  id: number; test_run_id: number; name: string; samples: number;
+  avg_response_time: number; min_response_time: number; max_response_time: number;
+  p90_response_time: number; p95_response_time: number; p99_response_time: number;
+  error_rate: number; throughput: number; kb_per_sec: number;
+}
+
+export interface TransactionComparison {
+  name: string;
+  baseline: Transaction | null;
+  compare: Transaction | null;
+  diffs: {
+    avg_response_time: number | null; p90_response_time: number | null;
+    p99_response_time: number | null; throughput: number | null; error_rate: number | null;
+  };
+  statuses: {
+    avg_response_time: 'regression'|'improvement'|'neutral'|'new'|'missing';
+    p90_response_time: 'regression'|'improvement'|'neutral'|'new'|'missing';
+    throughput:        'regression'|'improvement'|'neutral'|'new'|'missing';
+    error_rate:        'regression'|'improvement'|'neutral'|'new'|'missing';
+  };
+  overallStatus: 'regression'|'improvement'|'neutral'|'new'|'missing';
+}
+
+export interface Insight {
+  severity: 'critical' | 'warning' | 'info' | 'success';
+  title: string; message: string; transactionName?: string; metric?: string; diff?: number;
+}
+
+export interface ComparisonSummary {
+  totalTransactions: number; regressions: number; improvements: number;
+  neutral: number; newTransactions: number; missingTransactions: number;
+}
+
+export interface ComparisonResult {
+  baseline: TestRun; compare: TestRun;
+  transactionComparisons: TransactionComparison[];
+  insights: Insight[]; overallScore: number; summary: ComparisonSummary;
+}
+
+export interface TrendDataPoint {
+  test_run_id: number; test_run_name: string; build?: string; user_load?: number;
+  execution_date: string; transaction_name?: string;
+  avg_response_time: number; p90_response_time: number;
+  p95_response_time: number; p99_response_time: number;
+  throughput: number; error_rate: number; samples: number; kb_per_sec: number;
+}
+
+export interface TrendsOverview {
+  transactionNames: string[];
+  testRunSummary: Array<{ id: number; name: string; build?: string; user_load?: number; execution_date: string; status: string; }>;
+}
+
+export interface DashboardStats {
+  totalProjects: number; totalTestRuns: number; goodTests: number; badTests: number;
+  recentTestRuns: TestRun[]; allTestRuns: TestRun[];
+}
+
+export interface User {
+  id: number; username: string; role: 'admin' | 'user';
+  created_at?: string; project_ids?: number[];
+}
+export type UserRole = 'admin' | 'user';
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — FRONTEND: AUTH CONTEXT & API CLIENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/contexts/AuthContext.tsx
+  React context with:
+    State: token (string|null), username, role ('admin'|'user'|null),
+           isAuthenticated (bool), isLoading (bool)
+    Computed: isAdmin = role === 'admin'
+    login(username, password): POST /api/auth/login.
+      On success: store token, username, role in localStorage ('auth_token', 'auth_role', 'auth_username').
+      Set state. Throw error on failure.
+    logout(): Clear localStorage keys, reset state to unauthenticated.
+    On mount (useEffect): if 'auth_token' in localStorage, verify via GET /api/auth/me.
+      If valid, restore state. If 401, call logout().
+  Wrap app in <AuthProvider>. Export useAuth() hook.
+
+frontend/src/api/client.ts
+  Axios instance, baseURL: '/api', timeout: 30000.
+  Request interceptor: read 'auth_token' from localStorage, add Authorization: Bearer header if present.
+  Response interceptor: on 401 (and if URL is not '/auth/login' or '/auth/me' on load),
+    clear localStorage auth keys, redirect to /login.
+
+frontend/src/api/projects.ts — export these functions:
+  getProjects() → Project[]
+  getProject(id: number) → Project
+  createProject(data: {name, customer_name, description?}) → Project
+  updateProject(id, data) → Project
+  deleteProject(id) → void
+  getSubProjects(projectId: number) → SubProject[]
+  getSubProject(projectId, id) → SubProject
+  createSubProject(projectId, data: {name, description?}) → SubProject
+  updateSubProject(projectId, id, data) → SubProject
+  deleteSubProject(projectId, id) → void
+  getSubProjectFilters(projectId, subprojectId) → string[]
+  updateSubProjectFilters(projectId, subprojectId, filters: string[]) → string[]
+
+frontend/src/api/testruns.ts
+  getTestRuns(subprojectId) → TestRun[]
+  getTestRun(id) → TestRun
+  createTestRun(subprojectId, formData: FormData) → TestRun
+  updateTestRun(id, data: Partial<TestRun>) → TestRun
+  deleteTestRun(id) → void
+  getTransactions(testRunId) → Transaction[]
+
+frontend/src/api/comparison.ts
+  getComparison(baselineId, compareId) → ComparisonResult
+  getTrends(subprojectId, transactionName?: string, filter?: 'all'|'good') → TrendDataPoint[]|TrendsOverview
+  getDashboardStats() → DashboardStats
+
+frontend/src/api/users.ts
+  getUsers() → User[]
+  createUser(data: {username, password, role, project_ids}) → User
+  updateUser(id, data: {password?, role?, project_ids?}) → void
+  deleteUser(id) → void
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — FRONTEND: ROUTING & LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/App.tsx
+  Use react-router-dom v6 BrowserRouter + Routes.
+  ProtectedRoute: if not isAuthenticated (after loading), redirect to /login.
+  AdminRoute: if not isAdmin, redirect to /dashboard.
+
+  Routes:
+    /login          → Login (public)
+    /               → redirect to /dashboard
+    /dashboard      → Dashboard (protected)
+    /projects       → Projects (protected)
+    /projects/:id   → ProjectDetail (protected)
+    /projects/:projectId/subprojects/:subprojectId → SubProjectDetail (protected)
+    /upload         → Upload (protected)
+    /comparison     → Comparison (protected)
+    /trends         → Trends (protected)
+    /admin          → Admin (admin only)
+
+frontend/src/components/Layout.tsx
+  Wrapper: fixed sidebar (260px wide) + main content area.
+  Pass isAdmin to Sidebar.
+
+frontend/src/components/Sidebar.tsx
+  Fixed left sidebar, dark slate-900 background.
+  Logo area: 📊 icon + "PerfInsight" title + "Performance COE" subtitle.
+  Navigation links (with heroicons outline icons):
+    Dashboard (HomeIcon), Upload (ArrowUpTrayIcon), Comparison (ChartBarIcon),
+    Trends (ArrowTrendingUpIcon), Projects (FolderIcon)
+  Admin section (only if isAdmin): User Management (UsersIcon)
+  Active link highlighted in indigo-600.
+  Bottom: username + logout button (ArrowRightOnRectangleIcon).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 10 — FRONTEND: PAGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────────────────────────
+Login.tsx
+────────────────────────────────────────────────────────────────────────────────
+Full-page centered form (indigo gradient background).
+Username + password fields. "Sign In" button.
+Show error message on failure.
+On success, navigate to /dashboard.
+
+────────────────────────────────────────────────────────────────────────────────
+Dashboard.tsx
+────────────────────────────────────────────────────────────────────────────────
+Call getDashboardStats() on mount.
+
+Show 4 stat cards:
+  Total Projects (FolderIcon, blue), Total Test Runs (DocumentTextIcon, purple),
+  Good Tests (CheckCircleIcon, green), Bad Tests (XCircleIcon, red).
+
+Quick Compare panel:
+  Two selectors (baseline, compare) populated from stats.allTestRuns.
+  Options grouped by "Project - SubProject" label.
+  "Compare" button navigates to /comparison?baseline=X&compare=Y.
+
+Recent Test Runs section:
+  Group recentTestRuns by project_name → subproject_name.
+  Collapsible project sections (click to expand/collapse).
+  Each test run row: name, tool, date, status badge (green/red/yellow/gray),
+    transaction_count, link to SubProjectDetail.
+
+────────────────────────────────────────────────────────────────────────────────
+Projects.tsx
+────────────────────────────────────────────────────────────────────────────────
+Page header with "Projects" title and (admin only) "New Project" button.
+Grid of project cards: name, customer_name, description, subproject/test run counts.
+Click card → navigate to /projects/:id.
+Admin: inline delete button with confirmation.
+New Project modal: name (required), customer_name (required), description fields.
+
+────────────────────────────────────────────────────────────────────────────────
+ProjectDetail.tsx
+────────────────────────────────────────────────────────────────────────────────
+Fetch project + subprojects.
+Header: project name, customer_name, counts.
+Admin: "New Sub-Project" button, edit project name inline.
+Grid of sub-project cards: name, description, test_run_count, good_run_count,
+  last_run_date. Click → navigate to subproject detail route.
+Admin: delete sub-project (with confirmation).
+New Sub-Project modal: name, description.
+
+────────────────────────────────────────────────────────────────────────────────
+SubProjectDetail.tsx — MOST COMPLEX PAGE
+────────────────────────────────────────────────────────────────────────────────
+URL params: projectId, subprojectId.
+
+On mount: fetch subproject details + test runs.
+
+Header section:
+  - Sub-project name, description, test run stats (total, good, last run date)
+  - Buttons: "Upload New Test Run" (→ /upload with query params),
+             "View Trends" (→ /trends?subprojectId=X),
+             "Configure Transactions" (filter icon, opens filter modal)
+
+Test Runs Table (sortable columns):
+  Name (inline-editable), Build, Tool, Execution Date, Transactions count,
+  Status badge (Good/Bad/Pending/Under Review), Actions (view, delete)
+
+  Inline editing: click pencil icon on name. Input field appears; press Enter to
+    save (PUT /api/testruns/:id), Escape to cancel.
+  Status toggle: clicking the status badge cycles or opens a dropdown to change
+    status (good/bad/under_review/pending).
+  Delete: confirm dialog, then DELETE /api/testruns/:id.
+  Click row (non-action area) → open TransactionsModal.
+
+TransactionsModal:
+  Props: testRun, projectId, subprojectId, onClose.
+  On open: parallel fetch using Promise.all([getTransactions(run.id), getSubProjectFilters(projectId, subprojectId)]).
+  Header: "Transactions for [run name]" + close button.
+  If configuredFilters.size > 0, show checkbox: "Show configured transactions only".
+    When checked: filter displayed transactions to only those in configuredFilters Set.
+    Header subtitle shows: "Transactions (N of Total)" when filtered.
+    If configuredFilters.size === 0, show hint: "No transaction filters configured".
+  Table (table-fixed layout with explicit column widths using colgroup):
+    Transaction Name (28%), Samples (6%), Avg RT s (8%), P90 s (8%), P95 s (8%), P99 s (8%),
+    Error % (8%), Throughput req/s (10%), Min s (7%), Max s (7%)
+  All response times shown with 2 decimal places.
+  Scrollable table body, max height 70vh.
+
+FilterConfigModal (Transaction Filter Configuration):
+  Open from "Configure Transactions" button.
+  On open: parallel fetch of all transaction names from all test runs in subproject
+    (collect distinct names from getTransactions across all runs),
+    and current filters from getSubProjectFilters().
+
+  Search box to filter displayed transaction list.
+  Scrollable checklist of all transaction names.
+  Checked = included in filter. Pre-check names that are already in the saved filter.
+
+  Buttons:
+    "Select All" (visible list) — check all transactions that match current search
+    "Deselect All" (visible list) — uncheck all transactions that match current search
+    "Import from Excel" (ArrowUpTrayIcon) — hidden file input, triggers on click
+    "Save" — PUT /api/projects/:pid/subprojects/:sid/filters with selected names
+    "Cancel"
+
+  Excel/CSV Import:
+    Use SheetJS (xlsx) on the client side to parse the uploaded file.
+    Look for a column named 'transaction', 'name', or 'label' (case-insensitive regex /transaction|name|label/i).
+    If not found, use first column.
+    Extract all non-empty string values from that column.
+    Check all transaction names that match any of the imported names.
+    Show a banner: "Imported N transaction(s) from file. Y matched."
+
+────────────────────────────────────────────────────────────────────────────────
+Upload.tsx
+────────────────────────────────────────────────────────────────────────────────
+Page with Project + SubProject selectors (cascading dropdowns).
+Metadata form: Test Run Name, Build/Version, User Load (VUs), Test Tool
+  (dropdown: JMeter/Gatling/K6/Locust/Custom), Execution Date, Status, Notes.
+File drop zone (react-dropzone): accepts .csv, .xlsx, .jtl.
+  Shows file name + size after drop. Error on wrong file type.
+Upload button: POST /api/subprojects/:id/testruns with FormData.
+Success state: show transaction count parsed, offer "Upload Another" + "View Sub-Project" links.
+Error: show error message with retry.
+
+────────────────────────────────────────────────────────────────────────────────
+Comparison.tsx — CORE FEATURE PAGE
+────────────────────────────────────────────────────────────────────────────────
+Selectors row: Project → SubProject → Baseline Test Run → Compare Test Run.
+"Run Comparison" button → GET /api/comparison?baseline=X&compare=Y.
+Can also be pre-loaded from URL query params (?baseline=X&compare=Y).
+
+When results are loaded, show ALL of the following sections:
+
+1. SUMMARY AT A GLANCE — 8 stat cards:
+   - Compared (total transactions matched)
+   - Improved (improvement count)
+   - Degraded (regression count)
+   - Stable (neutral count)
+   - Above 5s (count of transactions where compare avg_response_time > 5)
+   - Peak RT (highest avg_response_time in compare, shown in seconds, 2 decimal places)
+   - Max Regression (highest positive p90 diff%, shown as "+X%")
+   - Best Improvement (lowest negative p90 diff%, shown as "-X%")
+
+2. EXECUTIVE SUMMARY — Generate narrative text:
+   - Opening: "The comparison between [baseline] and [compare] shows..."
+   - Mention regression count, improvement count, score (Good/Moderate/Poor).
+   - Peak response time sentence (transaction name + value).
+   - If max regression exists: "The largest regression was in [transaction] (+X% P90)."
+   - If best improvement exists: "The best improvement was in [transaction] (-X% P90)."
+   - Verdict: PASS if regressions===0, FAIL if regressions>improvements, otherwise PARTIAL PASS.
+
+3. TEST-LEVEL METRICS COMPARISON TABLE — 6 rows:
+   Row | Metric             | Baseline | Compare | Change
+   1   | Total Transactions | sum      | sum     | diff
+   2   | Avg Response Time  | avg of all txn avg RTs (s, 2dp) | same | change with ↑/↓
+   3   | P90 Response Time  | avg of all p90s | same | change
+   4   | Error Count        | sum(samples * error_rate/100) | same | diff
+   5   | Error Rate         | avg error_rate% (4dp) | same | change
+   6   | Throughput         | sum of throughput (2dp req/s) | same | change
+
+4. INSIGHTS — Render InsightCard for each insight (grouped: critical first).
+
+5. TRANSACTION COMPARISON — 4 TABS:
+
+   Tab: Response Times
+     Table with colgroup widths: Name(28%), B Avg(10%), C Avg(10%), Avg Δ(9%),
+       B P90(10%), C P90(10%), P90 Δ(9%), Status(14%)
+     Use table-fixed. All numeric cells tabular-nums.
+     Transaction Name: truncate with title tooltip for full name.
+     All RT values: 2 decimal places + "s".
+     Change columns: show "+X.XX%" or "-X.XX%", color red if regression, green if improvement.
+     Status badge: colored pill (Degraded=red, Improved=green, Stable=gray, New=blue, Missing=amber).
+     Click column headers to sort ascending/descending (toggle).
+     Row background: light red if regression, light green if improvement.
+
+   Tab: Throughput
+     Columns: Name(40%), Baseline TPS(16%), Compare TPS(16%), Change %(14%), Status(14%)
+     Same sorting, coloring, and badge logic.
+
+   Tab: Error Rate
+     Columns: Name(40%), Baseline Err%(16%), Compare Err%(16%), Change(14%), Status(14%)
+     Values shown as "X.XX%".
+     Absolute change shown (not percentage of percentage).
+
+   Tab: Charts
+     Four sections, each with a section title + description:
+     a) Average Response Time — AvgResponseTimeChart
+     b) P90 Response Time — P90ResponseTimeChart
+     c) Throughput — ThroughputChart
+     d) Error Rate — ErrorRateChart
+     Each chart section separated by a border.
+
+"Export PDF Report" button (top right, indigo button with DocumentArrowDownIcon):
+   Calls generateComparisonPDF(result).
+
+────────────────────────────────────────────────────────────────────────────────
+Trends.tsx
+────────────────────────────────────────────────────────────────────────────────
+Selectors row: Project (dropdown), Sub-Project (dropdown), Transaction (dropdown),
+  Filter (All Test Runs / Good Runs Only).
+
+Sub-Project selector: populated after Project selected (getSubProjects).
+Transaction selector: populated after SubProject selected (getTrends with no txn name).
+  Only show configured transactions if a filter is active for the subproject.
+
+If transaction filter is configured: show blue badge:
+  "Showing N configured transactions (filter active)" with FunnelIcon.
+
+When SubProject selected (but no transaction yet): show placeholder card with
+  quick-pick transaction buttons (first 8 transactions as clickable pills).
+
+When Transaction selected: show 5 charts:
+  1. Average Response Time Trend (line chart, Y: seconds)
+  2. P90 + P99 Response Time Trend (multi-line, Y: seconds)
+  3. Throughput Trend (line chart, Y: req/s)
+  4. Error Rate Trend (line chart, Y: %)
+  5. User Load per Test Run (bar chart, Y: VUs)
+
+X-axis: test run name (short, max 16 chars, truncate with ellipsis) + date on second line.
+Filter dropdown (All / Good Runs Only) changes which runs are shown.
+
+NOTE: There is NO "Sub-Project ID (direct)" text input. Only the cascading
+Project → Sub-Project dropdowns.
+
+────────────────────────────────────────────────────────────────────────────────
+Admin.tsx
+────────────────────────────────────────────────────────────────────────────────
+AdminRoute protected. Fetch all users on mount.
+Table: Username, Role badge (Admin=indigo, User=slate), Projects allocated (count),
+  Created date, Actions (edit, delete).
+Current logged-in user highlighted.
+
+Create User modal:
+  Username, Password, Role (admin/user). If role=user, show project allocation
+  checkboxes from getProjects().
+
+Edit User modal:
+  Change password (optional), Change role, Change project allocation.
+
+Delete: confirm, prevent self-deletion and last-admin deletion.
+Show role explanations below table.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 11 — FRONTEND: CHART COMPONENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All charts use Recharts. All use ResponsiveContainer width="100%" height={320}.
+All use CartesianGrid strokeDasharray="3 3".
+X-axis: angle=-35, textAnchor="end", interval=0, height=75.
+Legend with paddingTop='20px'.
+Tooltips show full transaction name (not truncated).
+Chart legends and tooltip data keys use ACTUAL test run names (not "Baseline"/"Compare").
+
+ResponseTimeChart.tsx — export named:
+
+  AvgResponseTimeChart({ comparisons, baselineName, compareName, maxItems=15 })
+    Data keys: `${baselineName} Avg (s)` and `${compareName} Avg (s)`
+    Colors: baseline=#6366f1 (indigo), compare=#f59e0b (amber)
+    Values: avg_response_time, 2 decimal places
+    Shared RTTooltip inner component showing full transaction name + values.
+    Default export: AvgResponseTimeChart (backwards compat wrapper).
+
+  P90ResponseTimeChart({ comparisons, baselineName, compareName, maxItems=15 })
+    Data keys: `${baselineName} P90 (s)` and `${compareName} P90 (s)`
+    Colors: baseline=#818cf8 (light indigo), compare=#fbbf24 (light amber)
+    Values: p90_response_time, 2 decimal places
+
+ThroughputChart.tsx
+  Props: { comparisons, baselineName, compareName, maxItems=15 }
+  Data keys: `${baselineName} TPS` and `${compareName} TPS`
+  Colors: #6366f1 / #f59e0b
+  Values: throughput, 2 decimal places
+  Y-axis label: "req/s"
+  Tooltip shows full transaction name + both values.
+
+ErrorRateChart.tsx
+  Props: { comparisons, baselineName, compareName, maxItems=15 }
+  Data keys: `${baselineName} Err%` and `${compareName} Err%`
+  Colors: #f97316 (orange) / #fca5a5 (light red)
+
+  Special behavior:
+    - First filter transactions that have any error > 0 in either run.
+    - Sort those by highest error rate descending.
+    - If none have errors, fall back to first maxItems by original order.
+
+  ReferenceLine at y=1 (dashed red, label "1%").
+
+  Custom tooltip:
+    Shows full transaction name, error rate % with red color,
+    and computed error count: Math.round(samples * error_rate / 100).
+
+TrendChart.tsx
+  Props: { data: TrendDataPoint[], title: string, yAxisLabel: string,
+           lines: Array<{key: string, label: string, color: string}> }
+  LineChart (not BarChart).
+  X-axis: numeric index (_index), custom tick renders test_run_name (16 chars max) on
+    first line and dateLabel on second line.
+  Y-axis with provided yAxisLabel.
+  Each line in `lines` array renders a <Line> with key/color/label.
+  Tooltip shows test run name + date + all line values.
+
+UserLoadChart (in Trends.tsx inline component):
+  BarChart of user_load per test run.
+  Same custom X-axis with test_run_name + date.
+  Bar color: #6366f1.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 12 — FRONTEND: COMPARISON TABLE COMPONENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/components/ComparisonTable.tsx
+
+Export named components: ResponseTimeTable, ThroughputTable, ErrorRateTable.
+All take props: { comparisons: TransactionComparison[], baselineName: string, compareName: string }
+
+Shared internal useSortDir hook:
+  State: { col: string | null, dir: 'asc'|'desc' }
+  toggle(col): if same col, flip dir; else set col + 'asc'
+  Returns sort state + toggle function + sorted comparisons.
+
+Default sort: regressions first (overallStatus order: regression=0, missing=1, improvement=2, neutral=3, new=4).
+
+Each table uses:
+  table-fixed layout.
+  <colgroup> with explicit <col style={{width:'X%'}} /> for EVERY column.
+  Sticky header (overflow-x: auto wrapper with min-w constraint).
+  All numeric cells: tabular-nums, text-right.
+  Transaction name cell: truncate, max-w, title attribute for full name on hover.
+
+ResponseTimeTable columns + colgroup widths:
+  Transaction Name (28%), Baseline Avg (10%), Compare Avg (10%), Avg Δ% (9%),
+  Baseline P90 (10%), Compare P90 (10%), P90 Δ% (9%), Status (14%)
+
+ThroughputTable columns + colgroup widths:
+  Transaction Name (40%), Baseline TPS (16%), Compare TPS (16%), Change % (14%), Status (14%)
+
+ErrorRateTable columns + colgroup widths:
+  Transaction Name (40%), Baseline Err% (16%), Compare Err% (16%), Change (14%), Status (14%)
+
+Row colors:
+  regression: bg-red-50 on hover bg-red-100
+  improvement: bg-emerald-50 on hover bg-emerald-100
+  neutral/new/missing: bg-white on hover bg-slate-50
+
+Status badge colors:
+  regression: bg-red-100 text-red-700
+  improvement: bg-emerald-100 text-emerald-700
+  neutral: bg-slate-100 text-slate-600
+  new: bg-blue-100 text-blue-700
+  missing: bg-amber-100 text-amber-700
+
+Change cell colors:
+  Show "+" prefix for positive, "-" for negative.
+  If regression direction: text-red-600
+  If improvement direction: text-emerald-600
+  Otherwise: text-slate-500
+
+Sortable header cells: show ↑↓ chevron icons (ChevronUpIcon/ChevronDownIcon from heroicons).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 13 — FRONTEND: INSIGHT CARD COMPONENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/components/InsightCard.tsx
+Props: { insight: Insight }
+
+Render a card with:
+  Left border color + background color + icon based on severity:
+    critical: border-red-400, bg-red-50, ExclamationCircleIcon (red)
+    warning:  border-amber-400, bg-amber-50, ExclamationTriangleIcon (amber)
+    info:     border-blue-400, bg-blue-50, InformationCircleIcon (blue)
+    success:  border-emerald-400, bg-emerald-50, CheckCircleIcon (emerald)
+  Show severity badge (uppercase).
+  Show title (bold) + message text.
+  If transactionName provided, show it in a small code-like span.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 14 — FRONTEND: PDF GENERATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/src/utils/generateComparisonPDF.ts
+
+Function: export function generateComparisonPDF(result: ComparisonResult): void
+
+CRITICAL: jsPDF's built-in Helvetica only covers Latin-1 (Windows-1252).
+Characters outside that range cause spaced-out rendering.
+Create sanitizer function s(text):
+  Replace curly single quotes (U+2018,U+2019,U+201A,U+201B,U+2032,U+2035) → '
+  Replace curly double quotes (U+201C,U+201D,U+201E,U+201F,U+2033,U+2036) → "
+  Replace en-dash/em-dash/horizontal bar (U+2013,U+2014,U+2015) → -
+  Replace ellipsis (U+2026) → ...
+  Replace non-breaking space (U+00A0) → space
+  Replace upward arrow (U+2191) → ^
+  Replace downward arrow (U+2193) → v
+  Replace bullet (U+25CF) → *
+  Replace anything outside \x00-\xFF → ?
+Wrap ALL dynamic text in s() before passing to jsPDF.
+
+NULL FALLBACKS — use ASCII only:
+  fmt3(v): v != null ? v.toFixed(2) + ' s' : '-'
+  fmt2(v): v != null ? v.toFixed(2) : '-'
+  fmtPct(v): v != null ? v.toFixed(4) + '%' : '-'
+  All null/undefined metric changes: '-' (not '—')
+
+Color palette (RGB tuples):
+  navy: [15,23,42], indigo: [79,70,229], indigoLight: [224,231,255],
+  amberLight: [254,243,199], amber: [180,112,0],
+  slate50:[248,250,252], slate200:[226,232,240], slate500:[100,116,139],
+  slate700:[51,65,85], slate900:[15,23,42],
+  red:[220,38,38], redLight:[254,226,226], green:[5,150,105], greenLight:[209,250,229],
+  orange:[234,88,12], white:[255,255,255]
+
+PDF layout (A4 landscape, jsPDF('landscape','mm','a4')):
+  pageW = doc.internal.pageSize.getWidth()  ≈ 297mm
+  pageH = doc.internal.pageSize.getHeight() ≈ 210mm
+  Margins: left=14, right=14.
+
+PAGE 1:
+  Navy header bar (full width, 28px tall).
+  "PERFINSIGHT" title + "PERFORMANCE COMPARISON REPORT" on header.
+  Baseline vs compare names in white text.
+
+  Section: COMPARISON OVERVIEW
+  autoTable 2-col layout: Label | Baseline value / Label | Compare value
+  Rows: Test Run Name, Sub-Project, Build, Test Tool, Execution Date.
+
+  Section: SUMMARY AT A GLANCE
+  Draw 8 mini cards in 2 rows of 4:
+    Compared, Improved, Degraded, Stable / Above 5s, Peak RT, Max Regression, Best Improvement
+  Each card: slate border, white bg, large number in bold, small label.
+
+  Section: EXECUTIVE SUMMARY
+  Multi-line text (doc.splitTextToSize to wrap at 260px wide).
+  Build same narrative as the UI: regressions, improvements, score, peak RT,
+    max regression transaction, best improvement transaction, verdict.
+
+  Section: TEST-LEVEL METRICS COMPARISON
+  autoTable: Metric | Baseline | Compare | Change
+  6 rows (Total Transactions, Avg RT, P90 RT, Error Count, Error Rate, Throughput).
+  Change cell colored: green if improvement, red if regression.
+
+  Section: INSIGHTS
+  autoTable: Severity | Title | Transaction | Message
+  Row fill color: lightRed for critical, amberLight for warning, indigoLight for info, greenLight for success.
+
+PAGE 2+:
+  Section: TRANSACTION COMPARISON
+  autoTable: # | Transaction | B Avg | C Avg | Avg Δ | B P90 | C P90 | P90 Δ | B TPS | C TPS | TPS Δ | B Err% | C Err% | Err Δ | Status
+  All response times: 2 decimal places + 's'.
+  All throughput: 2 decimal places.
+  Error rates: 4 decimal places + '%'.
+  Status column: text only (Degraded / Improved / Stable / New / Missing).
+  Row colors: light red for regression, light green for improvement.
+
+HEADERS AND FOOTERS on every page:
+  Header: thin navy bar at top with baseline vs compare names (small text).
+  Footer: "PerfInsight Report | Generated: <datetime>" on left, "Page X of Y" on right.
+
+Save file: doc.save(`PerfInsight_${s(result.baseline.name)}_vs_${s(result.compare.name)}.pdf`)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 15 — TAILWIND CSS SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+frontend/tailwind.config.js:
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}']
+  theme.extend: Add custom colors if desired.
+
+frontend/src/index.css:
+  @tailwind base; @tailwind components; @tailwind utilities;
+
+  Add component classes:
+    .card { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
+    .btn-primary { @apply bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors; }
+    .btn-secondary { @apply bg-white text-slate-700 px-4 py-2 rounded-lg font-medium border border-slate-200 hover:bg-slate-50 transition-colors; }
+    .form-label { @apply block text-sm font-medium text-slate-700 mb-1; }
+    .form-input { @apply w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+    .form-select { @apply w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+    .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+
+Use slate-900 for sidebar background, slate-50 for page background.
+Indigo-600 as primary brand color.
+All modals: fixed inset-0 bg-black/50 backdrop, centered white card.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 16 — ENVIRONMENT VARIABLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+backend/.env (and .env.example):
+  PORT=6001
+  DB_PATH=./data/perf_comparison.db
+  UPLOAD_DIR=./uploads
+  AUTH_USERNAME=admin
+  AUTH_PASSWORD=admin123
+  JWT_SECRET=change-this-to-a-long-random-secret-string
+
+In Replit, set these as Secrets (not in files):
+  JWT_SECRET → strong random string
+  AUTH_PASSWORD → secure password
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 17 — REPLIT-SPECIFIC CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.replit file:
+  run = "npm run install:all && npm run dev:backend & npm run dev:frontend"
+  language = "nodejs"
+
+Since Replit exposes one public port, configure the frontend Vite dev server to
+proxy /api to localhost:6001. The frontend runs on port 5173.
+
+Alternatively, for production-style single-port serving:
+  Build frontend (npm run build:frontend → outputs to frontend/dist/).
+  In backend/src/index.ts, serve static files from '../frontend/dist' using
+    express.static() AFTER all API routes.
+  Add catch-all route: app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../../frontend/dist/index.html')))
+  Change vite.config.ts to output to ../backend/public or configure accordingly.
+  Set Replit to run only: "node dist/index.js" after build.
+
+For Replit dev mode:
+  Vite proxy target should be http://0.0.0.0:6001 (not localhost).
+  Backend should listen on '0.0.0.0' not just localhost.
+  CORS origins should include the Replit preview URL (use '*' in dev or read from env).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 18 — DATA FLOW SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+UPLOADING A TEST RESULT:
+  1. User selects project + subproject in Upload page
+  2. Fills metadata (name, build, tool, date, user load, status, notes)
+  3. Drops a CSV/XLSX file
+  4. Frontend POSTs multipart/form-data to /api/subprojects/:id/testruns
+  5. Backend saves file to uploads/, parses with fileParser.ts
+  6. Inserts test_run row, then inserts all transaction rows
+  7. Returns created test run with transaction_count
+
+RUNNING A COMPARISON:
+  1. User selects project → subproject → baseline run → compare run
+  2. Frontend GETs /api/comparison?baseline=X&compare=Y
+  3. Backend fetches transactions for both runs from DB
+  4. Applies subproject's transaction_filters (if configured) to both sets
+  5. Runs comparisonEngine.runComparison()
+  6. Returns full result including all transaction comparisons, insights, score
+  7. Frontend renders: summary cards, executive summary, metrics table, insights,
+     tabbed comparison tables, 4 charts
+
+TREND ANALYSIS:
+  1. User selects subproject → transaction name → filter
+  2. Frontend calls getTrends(subprojectId, transactionName, filter)
+  3. Backend joins transactions to test_runs for that subproject + transaction name
+  4. Returns time-ordered TrendDataPoint[]
+  5. Frontend renders 5 charts (avg RT, P90/P99 RT, throughput, error rate, user load)
+
+TRANSACTION FILTER:
+  1. User opens FilterConfigModal from SubProjectDetail
+  2. Frontend fetches all distinct transaction names across ALL test runs in subproject
+  3. User checks/unchecks names (or imports from Excel using xlsx library)
+  4. Saves via PUT /api/projects/:pid/subprojects/:sid/filters
+  5. Backend stores as JSON array in sub_projects.transaction_filters
+  6. Next comparison: backend fetches filters and applies them to both run's transactions
+  7. Trends page: only shows filtered transactions in dropdown
+  8. Test run popup: checkbox to show only configured transactions
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 19 — IMPORTANT IMPLEMENTATION NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. RESPONSE TIMES: All response time values are stored in SECONDS (not ms).
+   Display all RT values with exactly 2 decimal places (toFixed(2)).
+
+2. TABLE-FIXED LAYOUT: The comparison tables MUST use table-fixed with a
+   <colgroup><col style={{width:'X%'}} /></colgroup> for EVERY column to prevent
+   columns from collapsing or overflowing. Never rely on auto table layout.
+
+3. TRANSACTION NAMES IN CHARTS: Never use literal "Baseline" or "Compare" as
+   chart data keys. Always construct data keys as:
+     `${baselineName} Avg (s)`, `${compareName} Avg (s)` etc.
+   This ensures Recharts Legend and Tooltip show actual test run names.
+
+4. PDF LATIN-1 SAFETY: ALWAYS pass every dynamic string through s() before
+   giving it to jsPDF. Never use Unicode arrows (↑↓), bullets (●), or em-dashes
+   (—) in the PDF. Use ^, v, *, - instead. Using non-Latin-1 characters causes
+   jsPDF to render the text with spaces between every character.
+
+5. TRANSACTION FILTER ON COMPARISON: The filter is applied on the BACKEND,
+   not the frontend. After fetching transactions for both runs, the backend
+   reads subproject.transaction_filters and, if non-empty, filters both
+   transaction arrays before passing to comparisonEngine.
+
+6. INLINE EDITING: Test run names can be edited inline in the SubProjectDetail
+   table. Click pencil → input appears pre-filled. Enter = save (PATCH API).
+   Escape = cancel. The row reverts to display mode after save.
+
+7. IMPORT FROM EXCEL (FILTER CONFIG): This happens CLIENT-SIDE using the xlsx
+   library. The file never goes to the backend. Read it with
+   XLSX.read(buffer, {type: 'array'}), parse first sheet, find the transaction
+   name column (regex /transaction|name|label/i on header keys, fallback to
+   first column), extract values, match against existing transaction list,
+   check matching ones.
+
+8. PROMISE.ALL IN TRANSACTIONS MODAL: When opening a test run's transactions
+   modal, fetch transactions AND subproject filters in parallel using
+   Promise.all([getTransactions(runId), getSubProjectFilters(projectId, subprojectId)]).
+   This avoids sequential loading.
+
+9. SECURITY:
+   - All API endpoints (except /login and /health) require JWT.
+   - Admin-only endpoints double-check with requireAdmin middleware.
+   - Non-admin users can only see projects explicitly allocated to them.
+   - Password hashing uses scrypt (NOT bcrypt, NOT md5).
+   - JWT tokens expire in 8 hours.
+   - Never store plain passwords.
+
+10. ERROR HANDLING: All API routes should return { success: false, error: message }
+    with appropriate HTTP status codes (400 bad request, 401 unauthorized,
+    403 forbidden, 404 not found, 500 server error). Frontend shows user-friendly
+    error messages.
+
+11. TRENDS PAGE: There is NO "Sub-Project ID (direct)" text input field.
+    Subprojects are always selected via the cascading Project → Sub-Project
+    dropdown selectors only.
+
+12. STATUS VALUES: Test run status options are:
+    'pending' (default), 'good', 'bad', 'under_review'
+    Only 'good' runs are included when filter='good' in Trends.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 20 — COMPLETE FEATURE CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Verify all of these are implemented before considering the app complete:
+
+AUTHENTICATION & AUTHORIZATION
+  [ ] JWT login with 8-hour expiry
+  [ ] scrypt password hashing
+  [ ] requireAuth middleware on all non-public endpoints
+  [ ] requireAdmin middleware on admin-only endpoints
+  [ ] Admin can see all projects; User sees only allocated projects
+  [ ] Cannot delete last admin account
+  [ ] Cannot demote last admin to user
+  [ ] Cannot delete your own account
+
+PROJECTS & SUB-PROJECTS
+  [ ] CRUD for projects (admin only create/edit/delete)
+  [ ] CRUD for sub-projects (admin only create/edit/delete)
+  [ ] Cascade delete (project → sub-projects → test runs → transactions)
+  [ ] Per-user project allocation
+
+TEST RUNS
+  [ ] Upload CSV/XLSX/JTL files with metadata
+  [ ] Auto-detect and parse JMeter, Gatling, K6, Locust, Generic CSV
+  [ ] Auto-convert milliseconds to seconds
+  [ ] Skip TOTAL summary rows
+  [ ] Inline rename test run name
+  [ ] Change test run status (good/bad/pending/under_review)
+  [ ] Delete test run (+ file cleanup)
+  [ ] View all transactions in popup modal with 2-dp response times
+  [ ] "Show configured transactions only" checkbox in popup
+
+COMPARISON
+  [ ] Select baseline and compare from same sub-project
+  [ ] Apply transaction filters before comparison
+  [ ] Summary at a Glance (8 stat cards)
+  [ ] Executive Summary narrative with verdict
+  [ ] Test-Level Metrics Comparison table (6 rows)
+  [ ] Insights with severity levels (critical/warning/info/success)
+  [ ] Response Times tab (sortable, color-coded, 2dp values)
+  [ ] Throughput tab (sortable, color-coded)
+  [ ] Error Rate tab (sortable, color-coded)
+  [ ] Charts tab with 4 charts (Avg RT, P90 RT, Throughput, Error Rate)
+  [ ] Chart legends/tooltips show actual test run names (not "Baseline"/"Compare")
+  [ ] PDF export with all sections, Latin-1-safe text
+
+TREND ANALYSIS
+  [ ] Select project → subproject → transaction → filter
+  [ ] Only filtered transactions shown in dropdown if filter is configured
+  [ ] 5 charts: Avg RT, P90/P99 RT, Throughput, Error Rate, User Load
+  [ ] Filter by Good Runs Only
+  [ ] NO direct SubProject ID input field
+
+TRANSACTION FILTERS
+  [ ] Per-subproject list of transaction names to include
+  [ ] Search/filter the transaction list
+  [ ] Select All / Deselect All (for visible/searched items)
+  [ ] Import from Excel/CSV (client-side parsing, no server upload)
+  [ ] Saved filters applied in comparison and trends
+
+PDF REPORT
+  [ ] Navy header with test run names
+  [ ] Comparison overview table
+  [ ] Summary at a Glance cards
+  [ ] Executive Summary narrative
+  [ ] Test-Level Metrics table
+  [ ] Insights table
+  [ ] Full transaction comparison table
+  [ ] Page headers + page numbers
+  [ ] All text ASCII-safe (s() sanitizer applied everywhere)
+  [ ] Change indicators use '-' not '—' as null fallback
+
+UI/UX
+  [ ] Sidebar navigation with active highlight
+  [ ] Role-aware sidebar (admin section hidden for non-admins)
+  [ ] Collapsible project/subproject sections in Dashboard
+  [ ] Status badges (color-coded: green=good, red=bad, yellow=pending, gray=under_review)
+  [ ] Sortable table columns with direction indicators
+  [ ] Responsive modals with backdrop overlay
+  [ ] Loading states for async operations
+  [ ] Error messages shown inline (not just console.error)
+  [ ] table-fixed layout with colgroup widths for comparison tables
+
+================================================================================
+END OF PROMPT
+================================================================================

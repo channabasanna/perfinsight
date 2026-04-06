@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+backend/dist/
+frontend/dist/
+
+# SQLite database
+backend/data/
+
+# Uploaded files
+backend/uploads/
+
+# Environment variables
+backend/.env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Claude Code local memory
+.claude/
+
+# Archives & generated test files
+*.zip
+*.pdf
+
+# TypeScript
+*.tsbuildinfo
